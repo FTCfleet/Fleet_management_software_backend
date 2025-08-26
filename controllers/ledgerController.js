@@ -367,9 +367,12 @@ module.exports.generateExcel = async (req, res) => {
 
         // Group ledgers by source warehouse
         const grouped = {};
+
+        const sourceWarehouses = await Warehouse.find({isSource: true});
+        sourceWarehouses.forEach(wh => grouped[wh.warehouseID] = []);
         for (const ledger of ledgers) {
             const src = ledger.sourceWarehouse?.warehouseID || 'UNKNOWN';
-            if (!grouped[src]) grouped[src] = [];
+            // if (!grouped[src]) grouped[src] = [];
             grouped[src].push(ledger);
         }
 
@@ -385,11 +388,9 @@ module.exports.generateExcel = async (req, res) => {
             .toLocaleString('en-US', { month: 'short', year: '2-digit' })
             .replace(' ', '-');
 
-        const files = [];
-
-        for (const [srcId, ledgerArr] of Object.entries(grouped)) {
-            const workbook = new ExcelJS.Workbook();
-            const ws = workbook.addWorksheet('Sheet1');
+        const workbook = new ExcelJS.Workbook();
+        for (let srcId in grouped) {
+            const ws = workbook.addWorksheet(srcId);
 
             ws.addRow(['Source Warehouse', srcId]);
             ws.addRow(['MONTH', monthLabel]);
@@ -400,7 +401,7 @@ module.exports.generateExcel = async (req, res) => {
 
             let totalToPay = 0, totalPaid = 0, totalComsn = 0, totalHamali = 0, totalFreight = 0;
 
-            for (const ledger of ledgerArr) {
+            for (const ledger of grouped[srcId]) {
 
                 let toPay = 0, paid = 0, hamali = 0;
 
@@ -438,37 +439,35 @@ module.exports.generateExcel = async (req, res) => {
             ws.addRow([]);
             ws.addRow(['TO PAY', ` ${srcId}`,'=', totalToPay]);
             ws.addRow(['HAMALI','', '(+)=', totalHamali]);
-            const statical = 0;
-            ws.addRow(['STATICAL','', '(+)=', statical]);
-            const addTotal = totalToPay + totalHamali + statical;
+            ws.addRow(['STATISTICAL','', '(+)=', totalHamali]);
+            const addTotal = totalToPay + 2*totalHamali;
             ws.addRow(['TOTAL','', '=', addTotal]);
             ws.addRow(['COMSN','', '(-)=', totalComsn]);
+            let finalTotal = addTotal - totalComsn;
+            ws.addRow(['TOTAL','', '=', finalTotal]);
             ws.addRow(['FREIGHT','', '(-)=', totalFreight]);
-            const finalTotal = addTotal - totalComsn - totalFreight;
+            finalTotal = finalTotal - totalFreight;
             ws.addRow(['TOTAL','', '=', finalTotal]);
 
-            const buffer = await workbook.xlsx.writeBuffer();
-            files.push({ name: `Ledger_Report_${srcId}_${destination}_${month}.xlsx`, buffer });
         }
+        const buffer = await workbook.xlsx.writeBuffer();
+        const file = { name: `Ledger_Report_${destination}_${month}.xlsx`, buffer };
 
-        if (files.length === 0) {
-            return res.status(404).json({ message: 'No ledgers found for given criteria', flag: false });
-        }
 
-        if (files.length === 1) {
+        // if (files.length === 1) {
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.setHeader('Content-Disposition', `attachment; filename="${files[0].name}"`);
-            return res.send(files[0].buffer);
-        }
+            res.setHeader('Content-Disposition', `attachment; filename="${file.name}"`);
+            return res.send(file.buffer);
+        // }
 
-        const zip = new JSZip();
-        for (const file of files) {
-            zip.file(file.name, file.buffer);
-        }
-        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename="Ledger_Reports_${destination}_${month}.zip"`);
-        return res.send(zipBuffer);
+        // const zip = new JSZip();
+        // for (const file of files) {
+        //     zip.file(file.name, file.buffer);
+        // }
+        // const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+        // res.setHeader('Content-Type', 'application/zip');
+        // res.setHeader('Content-Disposition', `attachment; filename="Ledger_Reports_${destination}_${month}.zip"`);
+        // return res.send(zipBuffer);
 
     } catch (err) {
         return res.status(500).json({ message: "Failed to generate ledger report", error: err.message, flag:false });
