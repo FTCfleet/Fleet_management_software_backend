@@ -6,6 +6,7 @@ const generateLedger = require("../utils/ledgerPdfFormat.js");
 const generateLedgerReport = require("../utils/ledgerReportFormat.js");
 const formatToIST = require("../utils/dateFormatter.js");
 const ExcelJS = require('exceljs');
+const JSZip = require('jszip');
 const Employee= require("../models/employeeSchema.js");
 const Warehouse= require("../models/warehouseSchema.js");
 const Driver = require("../models/driverSchema.js");
@@ -328,99 +329,149 @@ module.exports.getLedgersByDate = async(req, res) => {
 
 module.exports.generateExcel = async (req, res) => {
     try {
-        const { dateRange } = req.params;
-        const { vehicleNo } = req.query;
+        const { destination, month } = req.params;
 
-        const isForVehicle = vehicleNo !== undefined;
+        if (!destination || !month) {
+            return res.status(400).json({ message: "Destination warehouse and month are required", flag: false });
 
-        if (!dateRange || dateRange.length !== 16) {
-            return res.status(400).json({ message: "Invalid date range format" ,flag:false});
         }
 
-        let startString = dateRange.slice(0, 8);
-        let endString = dateRange.slice(8);
-
-        startString = startString.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-        endString = endString.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-
-        const startDate = new Date(`${startString}T00:00:00.000Z`);
-        const endDate = new Date(`${endString}T23:59:59.999Z`);
-        
-        let allLedgers;
-        if (isForVehicle) {
-            allLedgers = await Ledger.find({
-                $and: [
-                    {
-                        dispatchedAt: {
-                            $gte: startDate,
-                            $lte: endDate
-                        }
-                    },
-                    {
-                        vehicleNo: vehicleNo
-                    }
-                ]
-            }).populate('scannedBySource verifiedBySource scannedByDest verifiedByDest sourceWarehouse destinationWarehouse');
+        // Parse month (expects YYYY-MM or YYYYMM)
+        let year, mon;
+        if (month.includes('-')) {
+            [year, mon] = month.split('-');
+        } else if (month.length === 6) {
+            year = month.slice(0, 4);
+            mon = month.slice(4);
         } else {
-            allLedgers = await Ledger.find({ dispatchedAt: { $gte: startDate, $lte: endDate } })
-            .populate('scannedBySource verifiedBySource scannedByDest verifiedByDest sourceWarehouse destinationWarehouse');
+            return res.status(400).json({ message: "Invalid month format", flag: false });
         }
-        
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Ledger Report');
 
-        worksheet.columns = [
-            { header: 'Ledger ID', key: 'ledgerId', width: 20 },
-            { header: 'Vehicle No', key: 'vehicleNo', width: 15 },
-            { header: 'Status', key: 'status', width: 15 },
-            { header: 'Dispatched At', key: 'dispatchedAt', width: 20 },
-            { header: 'Delivered At', key: 'deliveredAt', width: 20 },
-            { header: 'Parcel Count', key: 'parcels', width: 15 },
-            { header: 'Scanned By Source', key: 'scannedBySource', width: 20 },
-            { header: 'Verified By Source', key: 'verifiedBySource', width: 20 },
-            { header: 'Scanned By Dest', key: 'scannedByDest', width: 20 },
-            { header: 'Verified By Dest', key: 'verifiedByDest', width: 20 },
-            { header: 'Source Warehouse', key: 'sourceWarehouse', width: 20 },
-            { header: 'Destination Warehouse', key: 'destinationWarehouse', width: 20 },
-            { header: 'Total Hamali', key: 'hamali', width: 20 },
-            { header: 'Total Freight', key: 'freight', width: 20 },
-            { header: 'Statistical Charges', key: 'charges', width: 20 },
-        ];
+        const startDate = new Date(Date.UTC(parseInt(year), parseInt(mon) - 1, 1));
+        const endDate = new Date(Date.UTC(parseInt(year), parseInt(mon), 0, 23, 59, 59, 999));
 
-        for (const ledger of allLedgers) {
-            let totalHamli=0,totalFreight=0,totalCharges=0;
-            for(const parcelId of ledger.parcels){
-                let parcel=await Parcel.findById(parcelId);
-                totalHamli+=parcel.hamali;
-                totalFreight+=parcel.freight;
-                totalCharges+=parcel.charges;
-            }
-            worksheet.addRow({
-                ledgerId: ledger.ledgerId,
-                vehicleNo: ledger.vehicleNo,
-                status: ledger.status,
-                dispatchedAt: ledger.dispatchedAt,
-                deliveredAt: ledger.deliveredAt,
-                parcels: ledger.parcels.length,
-                scannedBySource: ledger.scannedBySource?.name || '',
-                verifiedBySource: ledger.verifiedBySource?.name || '',
-                scannedByDest: ledger.scannedByDest?.name || '',
-                verifiedByDest: ledger.verifiedByDest?.name || '',
-                sourceWarehouse: ledger.sourceWarehouse?.warehouseID || '',
-                destinationWarehouse: ledger.destinationWarehouse?.warehouseID || '',
-                hamali:totalHamli,
-                freight:totalFreight,
-                charges:totalCharges
+        const destWarehouse = await Warehouse.findOne({ warehouseID: destination });
+        if (!destWarehouse) {
+            return res.status(404).json({ message: "Destination warehouse not found", flag: false });
+        }
+
+        const ledgers = await Ledger.find({
+            destinationWarehouse: destWarehouse._id,
+            dispatchedAt: { $gte: startDate, $lte: endDate }
+        })
+            .populate('sourceWarehouse destinationWarehouse')
+            .populate({
+                path: 'parcels',
+                select: 'freight payment hamali'
             });
+
+        // Group ledgers by source warehouse
+        const grouped = {};
+        for (const ledger of ledgers) {
+            const src = ledger.sourceWarehouse?.warehouseID || 'UNKNOWN';
+            if (!grouped[src]) grouped[src] = [];
+            grouped[src].push(ledger);
         }
 
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="Ledger Report ${isForVehicle ? `(${vehicleNo})` : ''} - ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}.xlsx"`);
+        const formatDate = (date) => {
+            const d = new Date(date);
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}-${mm}-${yyyy}`;
+        };
 
-        await workbook.xlsx.write(res);
-        // return res.json({ message: "Successful", flag:true });
+        const monthLabel = new Date(Date.UTC(parseInt(year), parseInt(mon) - 1, 1))
+            .toLocaleString('en-US', { month: 'short', year: '2-digit' })
+            .replace(' ', '-');
+
+        const files = [];
+
+        for (const [srcId, ledgerArr] of Object.entries(grouped)) {
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('Sheet1');
+
+            ws.addRow(['Source Warehouse', srcId]);
+            ws.addRow(['MONTH', monthLabel]);
+            ws.addRow(['Destination Warehouse', destination]);
+
+            ws.addRow([]);
+            ws.addRow(['DATE', 'MEMO', 'LORRY NO', 'TO PAY', 'PAID', 'COMSN', 'HAMALI', 'FREIGHT']);
+
+            let totalToPay = 0, totalPaid = 0, totalComsn = 0, totalHamali = 0, totalFreight = 0;
+
+            for (const ledger of ledgerArr) {
+
+                let toPay = 0, paid = 0, hamali = 0;
+
+                for (const parcel of ledger.parcels) {
+
+                    if (parcel.payment === 'To Pay') {
+                        toPay += parcel.freight;
+                    } else if (parcel.payment === 'Paid') {
+                        paid += parcel.freight;
+                    }
+                    hamali += parcel.hamali;
+                }
+
+                const comsn = 0.15 * (toPay + paid);
+                ws.addRow([
+                    formatDate(ledger.dispatchedAt),
+                    ledger.ledgerId,
+                    ledger.vehicleNo,
+                    toPay,
+                    paid,
+                    comsn,
+                    hamali,
+                    ledger.lorryFreight
+                ]);
+
+                totalToPay += toPay;
+                totalPaid += paid;
+                totalComsn += comsn;
+                totalHamali += hamali;
+                totalFreight += ledger.lorryFreight;
+            }
+
+            ws.addRow([]);
+            ws.addRow(['', '', 'Total', totalToPay, totalPaid, totalComsn, totalHamali, totalFreight]);
+            ws.addRow([]);
+            ws.addRow(['TO PAY', ` ${srcId}`,'=', totalToPay]);
+            ws.addRow(['HAMALI','', '(+)=', totalHamali]);
+            const statical = 0;
+            ws.addRow(['STATICAL','', '(+)=', statical]);
+            const addTotal = totalToPay + totalHamali + statical;
+            ws.addRow(['TOTAL','', '=', addTotal]);
+            ws.addRow(['COMSN','', '(-)=', totalComsn]);
+            ws.addRow(['FREIGHT','', '(-)=', totalFreight]);
+            const finalTotal = addTotal - totalComsn - totalFreight;
+            ws.addRow(['TOTAL','', '=', finalTotal]);
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            files.push({ name: `Ledger_Report_${srcId}_${destination}_${month}.xlsx`, buffer });
+        }
+
+        if (files.length === 0) {
+            return res.status(404).json({ message: 'No ledgers found for given criteria', flag: false });
+        }
+
+        if (files.length === 1) {
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${files[0].name}"`);
+            return res.send(files[0].buffer);
+        }
+
+        const zip = new JSZip();
+        for (const file of files) {
+            zip.file(file.name, file.buffer);
+        }
+        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="Ledger_Reports_${destination}_${month}.zip"`);
+        return res.send(zipBuffer);
+
     } catch (err) {
-        return res.status(500).json({ message: "Failed to generate ledger report", error: err.message,flag:false });
+        return res.status(500).json({ message: "Failed to generate ledger report", error: err.message, flag:false });
     }
 };
 

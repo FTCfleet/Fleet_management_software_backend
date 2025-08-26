@@ -13,7 +13,7 @@ router.route('/generate-ledger-receipt/:id')
 router.route('/track/:id')
     .get(authenticateToken, isSupervisor, catchAsync(ledgerController.trackLedger));
 
-router.route('/generate-excel/:dateRange')
+router.route('/generate-excel/:destination/:month')
     .get(catchAsync(ledgerController.generateExcel))
 
 router.route('/track-all/:date')
