@@ -141,7 +141,7 @@ module.exports.fetchAllWarehouses = async (req, res) => {
         if (allWarehouses.length === 0) {
             return res.status(201).json({ message: "No Warehouses", body: {} , flag:false});
         }
-
+        allWarehouses.sort((a, b) => a.order - b.order);
         return res.status(200).json({ message: "Successfully fetched all Warehouses", body: allWarehouses, flag:true });
     } catch (err) {
         return res.status(500).json({ message: "Failed to fetch all Warehouses", error: err.message , flag:false});
@@ -152,6 +152,7 @@ module.exports.fetchAllWarehouses = async (req, res) => {
 module.exports.addWarehouse = async (req, res) => {
     try {
         const warehouse = new Warehouse({ ...req.body });
+        warehouse.order= (await Warehouse.countDocuments()) + 1;
         await warehouse.save();
         return res.status(200).json({ message: "Successfully added a warehouse", body: warehouse ,flag:true});
     } catch (err) {
@@ -191,6 +192,14 @@ module.exports.deleteWarehouse = async (req, res) => {
         }
 
         await Warehouse.deleteOne({ warehouseID });
+        const allWarehouses= await Warehouse.find();
+        let order=1;
+        allWarehouses.sort((a, b) => a.order - b.order);
+        for(let wh of allWarehouses){
+            wh.order= order;
+            order++;
+            await wh.save();
+        }
 
         return res.status(200).json({ message: "Successfully deleted warehouse", body: warehouse , flag:true});
     } catch (err) {

@@ -20,6 +20,10 @@ const warehouseSchema= new mongoose.Schema({
     isSource:{
         type: Boolean,
         required: true
+    },
+    order:{
+        type: Number,
+        required: true
     }
 });
 
