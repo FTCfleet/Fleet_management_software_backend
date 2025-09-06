@@ -16,6 +16,8 @@ const {sendDeliveryMessage}= require("../utils/whatsappMessageSender.js");
 // const { Cluster } = require('puppeteer-cluster');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
+const fs = require('fs');
+const path = require('path');
 // const puppeteer = require('puppeteer');
 // let chromium;
 // if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
@@ -178,7 +180,19 @@ module.exports.generatePDF = async (req, res) => {
         const page = await browser.newPage();
 
         console.log('Setting page content...');
-        const htmlContent = generateLedger(ledger, driver);
+        // Embed logo image as data URL
+        let logoDataUrl = null;
+        try {
+            const logoPath = path.join(__dirname, '..', 'assets', 'logo.jpg');
+            if (fs.existsSync(logoPath)) {
+                const base64 = fs.readFileSync(logoPath).toString('base64');
+                logoDataUrl = `data:image/jpeg;base64,${base64}`;
+            }
+        } catch (e) {
+            console.warn('Logo embedding failed:', e.message);
+        }
+
+        const htmlContent = generateLedger(ledger, driver, { logoDataUrl });
         await page.setContent(htmlContent, { waitUntil: 'load' });
 
         console.log('Generating PDF...');
@@ -397,7 +411,7 @@ module.exports.generateExcel = async (req, res) => {
             ws.addRow(['Destination Warehouse', destination]);
 
             ws.addRow([]);
-            ws.addRow(['DATE', 'MEMO', 'LORRY NO', 'TO PAY', 'PAID', 'COMSN', 'HAMALI', 'FREIGHT']);
+            ws.addRow(['DATE', 'MEMO', 'LORRY NO', 'TO PAY', 'PAID', 'COMSN', 'HAMALI', 'LORRY FREIGHT']);
 
             let totalToPay = 0, totalPaid = 0, totalComsn = 0, totalHamali = 0, totalFreight = 0;
 
@@ -409,10 +423,10 @@ module.exports.generateExcel = async (req, res) => {
 
                     if (parcel.payment === 'To Pay') {
                         toPay += parcel.freight;
+                        hamali += parcel.hamali;
                     } else if (parcel.payment === 'Paid') {
                         paid += parcel.freight;
                     }
-                    hamali += parcel.hamali;
                 }
 
                 const comsn = 0.15 * (toPay + paid);

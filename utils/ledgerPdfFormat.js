@@ -1,28 +1,26 @@
 const formatToIST = require('../utils/dateFormatter.js')
 
-const generateLedger = (ledger, driver) => {
+const generateLedger = (ledger, driver, options = {}) => {
+    const { logoDataUrl } = options;
     console.log(ledger)
     let index = 1
-    let parcels = ledger.parcels;
-    parcels.sort((a,b) => a.payment == 'Paid' ? b : a);
-    let allParcels = parcels
-        .map(parcel => {
-            return `
+    const toPayParcels = (ledger.parcels || []).filter(p => p.payment === 'To Pay');
+    const paidParcels = (ledger.parcels || []).filter(p => p.payment === 'Paid');
+
+    const renderParcelRow = (parcel) => `
         <tr>
             <td>${index++}</td>
             <td>${parcel.trackingId}</td>
-            <td>${parcel.items.reduce(
-                (sum, item) => sum + item.quantity,
-                0
-            )}</td>
-            <td>${parcel.receiver.name || 'NA'}</td>
+            <td>${parcel.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
+            <td>${(parcel.receiver && parcel.receiver.name) ? parcel.receiver.name : 'NA'}</td>
             <td>${parcel.payment}</td>
             <td>₹${parcel.freight}</td>
             <td>₹${parcel.hamali}</td>
         </tr>
-    `
-        })
-        .join('');
+    `;
+
+    const toPayRows = toPayParcels.map(renderParcelRow).join('');
+    const paidRows = paidParcels.map(renderParcelRow).join('');
 
     let details =
         driver ? 
@@ -56,6 +54,15 @@ const generateLedger = (ledger, driver) => {
             sum + parcel.items.reduce((qty, item) => qty + item.quantity, 0),
         0
     )
+
+    // Compute Paid and To Pay subtotals
+    const paidAmount = paidParcels.reduce((sum, p) => sum + (p.freight || 0) + (p.hamali || 0), 0);
+    const toPayAmount = toPayParcels.reduce((sum, p) => sum + (p.freight || 0) + (p.hamali || 0), 0);
+
+    const paidItems = paidParcels.reduce((sum, p) => sum + p.items.reduce((q, it) => q + it.quantity, 0), 0);
+    const toPayItems = toPayParcels.reduce((sum, p) => sum + p.items.reduce((q, it) => q + it.quantity, 0), 0);
+
+    const logoImg = logoDataUrl ? `<img class="logo" src="${logoDataUrl}" />` : '';
 
     return `
         <!DOCTYPE html>
@@ -92,11 +99,6 @@ const generateLedger = (ledger, driver) => {
                     }
                 }
 
-                .header {
-                    text-align: center;
-                    margin-bottom: 15px;
-                }
-
                 .header h1 {
                     font-size: 22px;
                     margin-bottom: 3px;
@@ -105,6 +107,33 @@ const generateLedger = (ledger, driver) => {
                 h2{
                     color: #333;
                     font-size: 18px;
+                }
+
+                .header-bar {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-bottom: 8px;
+                }
+
+                .logo {
+                    width: 68px;
+                    height: auto;
+                }
+
+                .header-center {
+                    text-align: center;
+                    flex: 1;
+                }
+
+                .contact {
+                    text-align: right;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+
+                .contact .phone-icon {
+                    font-size: 14px;
                 }
 
                 .address {
@@ -175,9 +204,18 @@ const generateLedger = (ledger, driver) => {
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>FRIENDS TRANSPORT COMPANY</h1>
-                <h2>MEMO</h2>
+            <div class="header-bar">
+                <div class="header-left">${logoImg}</div>
+                <div class="header-center">
+                    <h1>FRIENDS TRANSPORT CO.</h1>
+                    <h2>MEMO</h2>
+                </div>
+                <div class="contact">
+                    <div class="phone-icon">☎</div>
+                    <div><strong>Hyd.</strong> 24614381</div>
+                    <div>24604381</div>
+                    <div><strong>Sec'bad:</strong> 29331533</div>
+                </div>
             </div>
 
             <div id="date-time">
@@ -205,38 +243,25 @@ const generateLedger = (ledger, driver) => {
                         </tr>
                     </thead>
                     <tbody>
-                        
-                        ${allParcels}
-                          <tr style="font-weight: bold; background-color: #f5f5f5;">
-                            <td colspan="2">Total</td>
-                            <td>${totalItems}</td>
+                        ${toPayRows}
+                        <tr style="font-weight: bold; background-color: #f5f5f5;">
+                            <td colspan="2">To Pay Total</td>
+                            <td>${toPayItems}</td>
                             <td></td>
                             <td></td>
-                            <td>₹${totalFreight}</td>
-                            <td>₹${totalHamali}</td>
+                            <td>₹${toPayParcels.reduce((s,p)=>s+(p.freight||0),0)}</td>
+                            <td>₹${toPayParcels.reduce((s,p)=>s+(p.hamali||0),0)}</td>
                         </tr>
-
+                        ${paidRows}
+                        <tr style="font-weight: bold; background-color: #f5f5f5;">
+                            <td colspan="2">Paid Total</td>
+                            <td>${paidItems}</td>
+                            <td></td>
+                            <td></td>
+                            <td>₹${paidParcels.reduce((s,p)=>s+(p.freight||0),0)}</td>
+                            <td>₹${paidParcels.reduce((s,p)=>s+(p.hamali||0),0)}</td>
+                        </tr>
                     </tbody>
-                </table>
-            </div>
-
-            <div style="margin: 15px 0;">
-                <h3 style="font-size: 14px; margin-bottom: 8px;">Summary</h3>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 0; text-align: center;">
-                    <tr style="font-weight: bold;">
-                        <td style="padding: 4px 12px;"></td>
-                        <td style="padding: 4px 12px;">No. of LRs</td>
-                        <td style="padding: 4px 12px;">Total Articles</td>
-                        <td style="padding: 4px 12px;">Amount</td>
-                    </tr>
-                    <tr style="border-top: 1px solid #333; font-weight: bold;">
-                        <td style="padding: 8px 12px;">Total</td>
-                        <td style="padding: 8px 12px;">${ledger.parcels.length
-        }</td>
-                        <td style="padding: 8px 12px;">${totalItems}</td>
-                        <td style="padding: 8px 12px;">₹${totalFreight + totalHamali
-        }</td>
-                    </tr>
                 </table>
             </div>
             <div style="text-align: right; display: absolute; bottom: 0;">Created by: ${ledger.verifiedBySource.name}</div>

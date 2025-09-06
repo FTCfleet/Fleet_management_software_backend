@@ -13,6 +13,8 @@ const chromium = require('@sparticuz/chromium');
 // }
 const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
 const Employee = require("../models/employeeSchema.js");
+const fs = require('fs');
+const path = require('path');
 
 module.exports.newParcel = async (req, res) => {
     try {
@@ -303,7 +305,18 @@ module.exports.generateLR = async (req, res) => {
         const page = await browser.newPage();
 
         console.log('Setting page content...');
-        const htmlContent = generateLRSheet(parcel);
+        // Embed logo image for header
+        let logoDataUrl = null;
+        try {
+            const logoPath = path.join(__dirname, '..', 'assets', 'logo.jpg');
+            if (fs.existsSync(logoPath)) {
+                const base64 = fs.readFileSync(logoPath).toString('base64');
+                logoDataUrl = `data:image/jpeg;base64,${base64}`;
+            }
+        } catch (e) {
+            console.warn('LR logo embedding failed:', e.message);
+        }
+        const htmlContent = generateLRSheet(parcel, { logoDataUrl });
         await page.setContent(htmlContent, { waitUntil: 'load' });
         await page.emulateMediaType('print');
 

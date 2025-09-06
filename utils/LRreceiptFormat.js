@@ -1,6 +1,7 @@
 const formatToIST = require("../utils/dateFormatter.js");
 
-const generateLR = (parcel, auto = 0) => {
+const generateLR = (parcel, auto = 0, options = {}) => {
+    const { logoDataUrl } = options;
     let index = 1;
     let allitems = parcel.items.map(item => {
         if (auto == 1) {
@@ -70,14 +71,26 @@ const generateLR = (parcel, auto = 0) => {
             `;
     }
 
+    const logoImg = logoDataUrl ? `<img class="logo" src="${logoDataUrl}" />` : '';
+
     return `
             <div class="lr-receipt">
                 <div class="content-wrapper">
                     <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
                     <div class="header">
+                <div class="top-bar">
+                    <div class="left">${logoImg}</div>
+                    <div class="center top-title">FRIENDS TRANSPORT CO.</div>
+                    <div class="right contact">
+                        <div class="phone-icon">☎</div>
+                        <div><strong>Hyd.</strong> 24614381</div>
+                        <div>24604381</div>
+                        <div><strong>Sec'bad:</strong> 29331533</div>
+                    </div>
+                </div>
                 <div class="company-row">
                     <div class="route-from">From: ${parcel.sourceWarehouse.name}</div>
-                    <h1>FRIENDS TRANSPORT COMPANY</h1>
+                    
                     <div class="route-to">To: ${parcel.destinationWarehouse.name}</div>
                 </div>
                 <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad. Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
@@ -132,7 +145,7 @@ const generateLR = (parcel, auto = 0) => {
     `;
 };
 
-const generateLRSheet = (parcel) => {
+const generateLRSheet = (parcel, options = {}) => {
     return `
         <!DOCTYPE html>
         <html>
@@ -154,7 +167,7 @@ const generateLRSheet = (parcel) => {
             width: 100%;
             height: 100%;
             border: 1px dotted #000;
-                    padding: 2mm;
+                    padding: 2mm 2mm 2mm 2mm; /* more top space; we'll offset header to keep it in place */
                     display: flex;
                     flex-direction: column;
             box-sizing: border-box;
@@ -172,12 +185,28 @@ const generateLRSheet = (parcel) => {
                     text-align: center;
             font-weight: bold;
                     font-size: 6px;
+            margin-top: 0.6mm; /* push jurisdiction lower */
             margin-bottom: 1mm;
                 }
                 .header {
                     text-align: center;
-            margin-bottom: 1mm;
+            margin-bottom: 0.6mm;
                 }
+                .top-bar {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-top: -1.0mm; /* keep header in place despite added top padding */
+                    margin-bottom: 0.5mm;
+                }
+                .top-bar .left .logo {
+                    width: 11mm; /* slightly smaller logo */
+                    height: auto;
+                }
+                .top-bar .center.top-title { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.2mm; position: relative; top: -0.3mm; }
+                .top-bar .right.contact { text-align: right; line-height: 1.2; }
+                .top-bar .right .phone-icon { font-size: 7px; }
+                .top-bar .right { font-size: 5px; }
                 .company-row {
                     display: flex;
                     justify-content: space-between;
@@ -278,9 +307,9 @@ const generateLRSheet = (parcel) => {
         </head>
         <body>
             <div class="sheet">
-                ${generateLR(parcel)}
-                ${generateLR(parcel)}
-                ${generateLR(parcel, 1)}
+                ${generateLR(parcel, 0, options)}
+                ${generateLR(parcel, 0, options)}
+                ${generateLR(parcel, 1, options)}
             </div>
         </body>
         </html>
