@@ -77,27 +77,26 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="lr-receipt">
                 <div class="content-wrapper">
                     <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
-                    <div class="header">
-                <div class="top-bar">
-                    <div class="left">${logoImg}</div>
-                    <div class="center top-title">FRIENDS TRANSPORT CO.</div>
-                    <div class="right contact">
-                        <div class="phone-icon">☎</div>
-                        <div><strong>Hyd.</strong> 24614381</div>
-                        <div>24604381</div>
-                        <div><strong>Sec'bad:</strong> 29331533</div>
-                    </div>
-                </div>
-                <div class="company-row">
-                    <div class="route-from">From: ${parcel.sourceWarehouse.name}</div>
-                    
-                    <div class="route-to">To: ${parcel.destinationWarehouse.name}</div>
-                </div>
-                <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad. Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
-                        <div class="lr-header-row">
-                    <div class="date">Date: ${formatToIST(parcel.placedAt)}</div>
                     <div class="lr-no">LR No: <b>${parcel.trackingId}</b></div>
-                    <div class="payment">${parcel.payment.toUpperCase()}</div>
+
+                    <div class="header">
+                        <div class="top-bar">
+                            <div class="top-title">
+                                ${logoImg}
+                                <span class="company-name">FRIENDS TRANSPORT CO.</span>
+                            </div>
+                            <div class="contact">
+                                <div><span class="phone-icon">☎</span> <strong>HYD-01: </strong>24614381</div>
+                                <div><strong>HYD-02: </strong>24604381 </div>
+                                <div><strong>SECBAD: </strong>29331533  </div>
+                                <div><strong>BDPURA: </strong>9515409041   </div>
+                            </div>
+                        </div>
+                        <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad. Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
+                        <div class="company-row">
+                            <div class="route-from">From: ${parcel.sourceWarehouse.name}</div>
+                            <div class="date">Date: ${formatToIST(parcel.placedAt)}</div>
+                            <div class="route-to">To: ${parcel.destinationWarehouse.name}</div>
                         </div>
                     </div>
 
@@ -127,7 +126,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                             </table>
             <div style="display: flex; justify-content: space-between;">
                 <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : parcel.doorDeliveryCharge : 'No'}</div>
-                ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount === 0 ? "____" : totalAmount}</div>` : ''}
+                ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount === 0 ? "____" : totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
             </div>
             <div class="meta">
                 <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
@@ -183,29 +182,61 @@ const generateLRSheet = (parcel, options = {}) => {
         }
                 .jurisdiction {
                     text-align: center;
-            font-weight: bold;
-                    font-size: 6px;
-            margin-top: 0.6mm; /* push jurisdiction lower */
-            margin-bottom: 1mm;
+                    text-decoration: underline;
+                    font-size: 5px;
+                    margin-top: 0.6mm; /* push jurisdiction lower */
+                    margin-bottom: 1mm;
                 }
+
+                .lr-no{
+                    position: absolute;
+                    right: 14px;
+                    font-size: 6px;
+                }
+
                 .header {
                     text-align: center;
-            margin-bottom: 0.6mm;
+                    margin-bottom: 0.6mm;
                 }
                 .top-bar {
                     display: flex;
-                    align-items: flex-start;
-                    justify-content: space-between;
-                    margin-top: -1.0mm; /* keep header in place despite added top padding */
-                    margin-bottom: 0.5mm;
+                    align-items: center;
+                    justify-content: center;
+                    margin-top: -1mm;  /* keep header in place despite added top padding */
+                    font-family: Arial, sans-serif;
                 }
-                .top-bar .left .logo {
+
+                .top-title {
+                    display: flex;
+                    align-items: center;
+                    font-size: 12px; /* company name size */
+                    font-weight: bold;
+                }
+
+                .company-name {
+                    white-space: nowrap;
+                }
+
+                .top-bar .top-title .logo {
                     width: 11mm; /* slightly smaller logo */
                     height: auto;
                 }
-                .top-bar .center.top-title { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.2mm; position: relative; top: -0.3mm; }
-                .top-bar .right.contact { text-align: right; line-height: 1.2; }
-                .top-bar .right .phone-icon { font-size: 7px; }
+
+                .contact {
+                    display: flex;
+                    position: absolute;
+                    right: 14px;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    text-align: right;
+                    font-size: 4.5px; /* smaller than title */
+                    line-height: 1.2;
+                }
+
+                .phone-icon {
+                    margin-right: 2mm;
+                }
+
                 .top-bar .right { font-size: 5px; }
                 .company-row {
                     display: flex;
@@ -213,14 +244,20 @@ const generateLRSheet = (parcel, options = {}) => {
                     align-items: center;
                     margin-bottom: 1mm;
                     position: relative;
+                    text-align: center;
+                    font-size: 5px;
                 }
                 .route-from, .route-to {
-                    font-size: 5px;
                     font-weight: bold;
                     position: absolute;
                 }
                 .route-from {
                     left: 0;
+                }
+
+                .date {
+                    position: absolute;
+                    left: 40%;
                 }
                 .route-to {
                     right: 0;
@@ -235,7 +272,7 @@ const generateLRSheet = (parcel, options = {}) => {
         }
         .address {
             font-size: 5px;
-            margin: 0.3mm 0;
+            margin-bottom: 4px;
         }
         .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
         .route .sep { margin: 0 1mm; }
@@ -250,8 +287,7 @@ const generateLRSheet = (parcel, options = {}) => {
                     justify-content: space-between;
             font-size: 5px;
             margin: 0.5mm 0;
-            margin-top: -4px;
-        }
+s        }
         .consignor, .consignee {
                     display: flex;
                     gap: 1mm;
