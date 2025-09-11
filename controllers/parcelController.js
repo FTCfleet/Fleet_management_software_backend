@@ -3,7 +3,7 @@ const Client = require("../models/clientSchema.js");
 const Item = require("../models/itemSchema.js");
 const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
-const { generateLR, generateLRSheet } = require("../utils/LRreceiptFormat.js");
+const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const Warehouse = require("../models/warehouseSchema.js");
 // const puppeteer = require('puppeteer');
 const formatToIST = require("../utils/dateFormatter.js");
@@ -277,28 +277,6 @@ module.exports.generateLR = async (req, res) => {
                 executablePath: puppeteerLocal.executablePath(),
             };
         }
-
-        // if (process.env.RENDER) {
-        //     launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-    //   launchOptions.executablePath = "/opt/render/.cache/puppeteer/chrome/linux-139.0.7258.66/chrome-linux64/chrome";
-    // }
-
-        // if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        //     console.log("pipputess");
-        //     // launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        //     launchOptions.executablePath = '/opt/render/.cache/puppeteer/chrome/linux-139.0.7258.66/chrome-linux64/chrome';
-        // }
-        // if (process.env.AWS_LAMBDA_FUNCTION_VERSION && chromium) {
-        //     console.log("\nawssss");
-        //     launchOptions = {
-        //         args: chromium.args,
-        //         executablePath: await chromium.executablePath(),
-        //         headless: chromium.headless,
-        //     };
-        // }
-        // console.log("Testing puppeteer launch options:\n\n\n");
-        // console.log('Executable Path:', process.env.PUPPETEER_EXECUTABLE_PATH);
-        // console.log('Chromium Path from aws-lambda:', await chromium.executablePath());
 
         const browser = await puppeteer.launch(launchOptions);
 

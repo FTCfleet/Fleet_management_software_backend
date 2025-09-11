@@ -18,9 +18,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                 <td>${index++}</td>
                 <td>${item.name}</td>  
                 <td>${item.quantity}</td>
-                <td>${item.freight == 0 ? "____" : `₹${item.freight}`}</td>
-                <td>${item.hamali == 0 ? "____" : `₹${item.hamali}`}</td>
-                <td>${item.statisticalCharges == 0 ? "____" : `₹${item.statisticalCharges}`}</td>
+                <td>${`₹${item.freight}`}</td>
+                <td>${`₹${item.hamali}`}</td>
+                <td>${`₹${item.statisticalCharges}`}</td>
             </tr>
             `;
         }
@@ -64,9 +64,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <tr class="total-row">
                 <td colspan="2">Total</td>
                 <td>${totalItems}</td>
-                <td>${totalFreight === 0 ? "____" : `₹${totalFreight}`}</td>
-                <td>${totalHamali === 0 ? "____" : `₹${totalHamali}`}</td>
-                <td>${totalCharges === 0 ? "____" : `₹${totalCharges}`}</td>
+                <td>${`₹${totalFreight}`}</td>
+                <td>${`₹${totalHamali}`}</td>
+                <td>${`₹${totalCharges}`}</td>
             </tr>
             `;
     }
@@ -77,7 +77,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="lr-receipt">
                 <div class="content-wrapper">
                     <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
-                    <div class="lr-no">LR No: <b>${parcel.trackingId}</b></div>
+                    <div class="lr-no">LR No: ${parcel.trackingId}</div>
 
                     <div class="header">
                         <div class="top-bar">
@@ -94,9 +94,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                         </div>
                         <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad. Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
                         <div class="company-row">
-                            <div class="route-from">From: ${parcel.sourceWarehouse.name}</div>
-                            <div class="date">Date: ${formatToIST(parcel.placedAt)}</div>
-                            <div class="route-to">To: ${parcel.destinationWarehouse.name}</div>
+                            <div class="route-from"><strong>From: </strong> ${parcel.sourceWarehouse.name}</div>
+                            <div class="date"><strong>Date: </strong>${formatToIST(parcel.placedAt)}</div>
+                            <div class="route-to"><strong>To: </strong>${parcel.destinationWarehouse.name}</div>
                         </div>
                     </div>
 
@@ -126,7 +126,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                             </table>
             <div style="display: flex; justify-content: space-between;">
                 <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : parcel.doorDeliveryCharge : 'No'}</div>
-                ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount === 0 ? "____" : totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
+                ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
             </div>
             <div class="meta">
                 <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
@@ -139,7 +139,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
         <div class="footer">
             <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Ramagundam-Cell: 9866239010 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
                 </div>
-            <div style="text-align: right; display: absolute; bottom: 0;">Created by: ${parcel.addedBy.name}</div>
+            <div style="text-align: right; display: absolute;font-size: 6px">Created by: ${parcel.addedBy.name}</div>
             </div>
     `;
 };
@@ -152,34 +152,33 @@ const generateLRSheet = (parcel, options = {}) => {
             <title>FTC LR Receipt</title>
             <style>
                 @page {
-            size: 4in 6in;
+                    size: 4in 6in;
                     margin: 0;
                 }
-        body { width: 4in; height: 6in; margin: 0; padding: 1.5mm; font-family: Arial, sans-serif; font-size: 6px; }
+                body { width: 4in; height: 6in; margin: 0; padding: 1.5mm; font-family: Arial, sans-serif; font-size: 6px; }
                 .sheet {
-            width: 100%;
-            height: 100%;
+                    width: 100%;
+                    height: 100%;
                     display: flex;
                     flex-direction: column;
                 }
                 .lr-receipt {
-            width: 100%;
-            height: 100%;
-            border: 1px dotted #000;
+                    width: 100%;
+                    height: 100%;
+                    border: 1px dotted #000;
                     padding: 2mm 2mm 2mm 2mm; /* more top space; we'll offset header to keep it in place */
                     display: flex;
                     flex-direction: column;
-            box-sizing: border-box;
-            page-break-after: always;
+                    box-sizing: border-box;
                 }
                 .content-wrapper {
-            flex-grow: 1;
+                    flex-grow: 1;
                     display: flex;
                     flex-direction: column;
                 }
-        .footer {
-            margin-top: auto; /* Push footer to the bottom */
-        }
+                .footer {
+                    margin-top: auto; /* Push footer to the bottom */
+                }
                 .jurisdiction {
                     text-align: center;
                     text-decoration: underline;
@@ -191,6 +190,7 @@ const generateLRSheet = (parcel, options = {}) => {
                 .lr-no{
                     position: absolute;
                     right: 14px;
+                    font-weight: bold;
                     font-size: 6px;
                 }
 
@@ -242,13 +242,11 @@ const generateLRSheet = (parcel, options = {}) => {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 1mm;
                     position: relative;
                     text-align: center;
                     font-size: 5px;
                 }
                 .route-from, .route-to {
-                    font-weight: bold;
                     position: absolute;
                 }
                 .route-from {
@@ -264,48 +262,48 @@ const generateLRSheet = (parcel, options = {}) => {
                 }
                 .header h1 {
                     margin: 0;
-            padding: 0;
-            font-size: 8px;
-            font-weight: bold;
-            text-align: center;
-            width: 100%;
-        }
-        .address {
-            font-size: 5px;
-            margin-bottom: 4px;
-        }
-        .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
-        .route .sep { margin: 0 1mm; }
+                    padding: 0;
+                    font-size: 8px;
+                    font-weight: bold;
+                    text-align: center;
+                    width: 100%;
+                }
+                .address {
+                    font-size: 5px;
+                    margin-bottom: 4px;
+                }
+                .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
+                .route .sep { margin: 0 1mm; }
                 .lr-header-row {
                     display: flex;
                     justify-content: space-between;
-            font-size: 6px;
-            margin: 0.5mm 0 0.3mm 0;
+                    font-size: 6px;
+                    margin: 0.5mm 0 0.3mm 0;
                 }
-        .consignor-consignee {
+                .consignor-consignee {
                     display: flex;
                     justify-content: space-between;
-            font-size: 5px;
-            margin: 0.5mm 0;
-s        }
-        .consignor, .consignee {
+                    font-size: 5px;
+                    margin: 0.5mm 0;
+                }
+                .consignor, .consignee {
                     display: flex;
                     gap: 1mm;
                     align-items: center;
-        }
-        .label {
+                }
+                .label {
                     font-weight: bold;
-        }
-        .phone {
+                }
+                .phone {
                     color: #666;
-        }
-        .main-table {
+                }
+                .main-table {
                     width: 100%;
                     border-collapse: collapse;
-            font-size: 6px;
-            margin: 0.7mm 0;
-            table-layout: fixed;
-        }
+                    font-size: 6px;
+                    margin: 0.7mm 0;
+                    table-layout: fixed;
+                }
         /* 6-column widths: S.No | Item | Qty | Freight | Hamali | Statical */
         .main-table thead tr th:nth-child(1), .main-table tbody tr td:nth-child(1) { width: 8%; }
         .main-table thead tr th:nth-child(2), .main-table tbody tr td:nth-child(2) { width: 42%; }
@@ -352,4 +350,4 @@ s        }
     `;
 };
 
-module.exports = { generateLR, generateLRSheet };
+module.exports = { generateLRSheet };

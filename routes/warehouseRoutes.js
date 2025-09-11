@@ -8,6 +8,6 @@ router.route('/get-all')
     .get(catchAsync(warehouseController.fetchAllWarehouse))
 
 router.route('/edit/:id')
-    .put(authenticateToken, isAdmin, catchAsync(warehouseController.editWarehouse))
+    .put(authenticateToken, catchAsync(warehouseController.editWarehouse))
 
 module.exports= router;
