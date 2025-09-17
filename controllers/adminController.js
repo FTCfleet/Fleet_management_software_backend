@@ -8,6 +8,19 @@ const Client = require("../models/clientSchema.js");
 const RegularClient= require("../models/regularClientSchema.js");
 const RegularItem= require("../models/regularItemSchema.js");
 
+const toBoolean = (value) => {
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === 'true' || normalized === '1';
+    }
+    return Boolean(value);
+};
+
+const REGULAR_ITEM_SUFFIX_REGEX = /\s*\((?:C\/B|G\/B|BUNDLE)\)$/;
+const extractRegularItemBaseName = (name = '') => name.replace(REGULAR_ITEM_SUFFIX_REGEX, '').trim();
+const buildRegularItemName = (baseName, type) => `${baseName.trim()} (${type})`;
+const REGULAR_ITEM_TYPES = ['C/B', 'G/B', 'BUNDLE'];
+
 //
 module.exports.fetchAllEmployees = async (req, res) => {
     try {
@@ -282,35 +295,72 @@ module.exports.getAllRegularItems= async(req, res)=>{
     }
 }
 
+
+
+
 module.exports.addNewRegularItems= async(req, res)=>{
     try{
         const { items }= req.body;
-        for(let item of items){
-            const newitem= new RegularItem({name: item.name +  ` (${item.type})`, type: item.type, freight: item.freight, hamali: item.hamali});
-            await newitem.save();
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: "No items provided for creation", flag: false });
         }
 
-        return res.status(201).json({ message: "Successfully added all regular items", flag: true });
-    }catch(err){
-        return res.status(500).json({ message: "Failed to add new regular items", error: err.message, flag: false });
-    }
-}
+        const combinationGuard = new Set();
+        const preparedItems = [];
 
-module.exports.editRegularItems= async(req, res)=>{
-    try{
-        const { items }= req.body;
-        for(let item of items){
-            const existingItem = await RegularItem.findById(item._id);
-            // existingItem.name = item.name;
-            existingItem.type = item.type;
-            existingItem.freight = item.freight;
-            existingItem.hamali = item.hamali;
-            // const newitem = await RegularItem.findByIdAndUpdate(item._id, existingItem, { new: true });
-            await existingItem.save();
+        for (const item of items){
+            if (!item || typeof item !== 'object') {
+                return res.status(400).json({ message: "Each item must be an object", flag: false });
+            }
+
+            const rawName = typeof item.name === 'string' ? item.name.trim() : '';
+            if (!rawName) {
+                return res.status(400).json({ message: "Regular item name is required", flag: false });
+            }
+
+            const baseName = extractRegularItemBaseName(rawName);
+            if (!baseName) {
+                return res.status(400).json({ message: "Regular item name cannot be empty", flag: false });
+            }
+
+            const typeCandidate = typeof item.type === 'string' ? item.type.trim() : '';
+            const normalizedType = typeCandidate.toUpperCase();
+            if (!normalizedType || !REGULAR_ITEM_TYPES.includes(normalizedType)) {
+                return res.status(400).json({ message: "Invalid or missing regular item type", flag: false });
+            }
+
+            const combinationKey = `${baseName.toLowerCase()}|${normalizedType.toLowerCase()}`;
+            if (combinationGuard.has(combinationKey)) {
+                return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
+            }
+            combinationGuard.add(combinationKey);
+
+            const finalName = buildRegularItemName(baseName, normalizedType);
+
+            preparedItems.push({
+                name: finalName,
+                type: normalizedType,
+                freight: item.freight,
+                hamali: item.hamali
+            });
         }
 
-        return res.status(201).json({ message: "Successfully added all regular items", flag: true });
+        const lookupFilters = preparedItems.map(({ name, type }) => ({ name, type }));
+        if (lookupFilters.length > 0) {
+            const conflicts = await RegularItem.find({ $or: lookupFilters }).collation({ locale: 'en', strength: 2 });
+            if (conflicts.length > 0) {
+                return res.status(409).json({ message: `Regular item "${conflicts[0].name}" already exists`, flag: false });
+            }
+        }
+
+        const createdItems = await RegularItem.insertMany(preparedItems);
+
+        return res.status(201).json({ message: "Successfully added all regular items", flag: true, body: createdItems });
     }catch(err){
+        if (err.code === 11000){
+            return res.status(409).json({ message: "Regular item already exists", flag: false });
+        }
         return res.status(500).json({ message: "Failed to add new regular items", error: err.message, flag: false });
     }
 }
@@ -338,6 +388,95 @@ module.exports.deleteRegularItem = async(req, res) => {
     }
 }
 
+
+
+
+module.exports.editRegularItems= async(req, res)=>{
+    try{
+        const { items }= req.body;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: "No items provided for update", flag: false });
+        }
+
+        const updatesToApply = [];
+        const combinationGuard = new Set();
+
+        for (const item of items){
+            if (!item || !item._id) {
+                return res.status(400).json({ message: "Item id is required for update", flag: false });
+            }
+
+            const existingItem = await RegularItem.findById(item._id);
+            if (!existingItem){
+                return res.status(404).json({ message: `No Regular Item found with ID: ${item._id}`, flag: false });
+            }
+
+            let nextType = existingItem.type;
+            if (Object.prototype.hasOwnProperty.call(item, 'type')) {
+                const typeCandidate = typeof item.type === 'string' ? item.type.trim() : '';
+                const normalizedType = typeCandidate.toUpperCase();
+                if (!normalizedType || !REGULAR_ITEM_TYPES.includes(normalizedType)) {
+                    return res.status(400).json({ message: "Invalid or missing regular item type", flag: false });
+                }
+                nextType = normalizedType;
+            }
+
+            if (!nextType){
+                return res.status(400).json({ message: "Regular item type is required", flag: false });
+            }
+
+            let baseName;
+            if (typeof item.name === 'string') {
+                const trimmedName = item.name.trim();
+                if (!trimmedName) {
+                    return res.status(400).json({ message: "Regular item name cannot be empty", flag: false });
+                }
+                baseName = extractRegularItemBaseName(trimmedName);
+            } else {
+                baseName = extractRegularItemBaseName(existingItem.name);
+            }
+
+            if (!baseName) {
+                return res.status(400).json({ message: "Regular item name cannot be empty", flag: false });
+            }
+
+            const finalName = buildRegularItemName(baseName, nextType);
+            const combinationKey = `${baseName.toLowerCase()}|${nextType.toLowerCase()}`;
+            if (combinationGuard.has(combinationKey)) {
+                return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
+            }
+            combinationGuard.add(combinationKey);
+
+            const duplicate = await RegularItem.findOne({ _id: { $ne: existingItem._id }, name: finalName, type: nextType }).collation({ locale: 'en', strength: 2 });
+            if (duplicate) {
+                return res.status(409).json({ message: `Regular item "${finalName}" already exists`, flag: false });
+            }
+
+            const setPayload = { name: finalName, type: nextType };
+            if (Object.prototype.hasOwnProperty.call(item, 'freight')){
+                setPayload.freight = item.freight;
+            }
+            if (Object.prototype.hasOwnProperty.call(item, 'hamali')){
+                setPayload.hamali = item.hamali;
+            }
+
+            updatesToApply.push({ id: existingItem._id, set: setPayload });
+        }
+
+        for (const { id, set } of updatesToApply){
+            await RegularItem.findByIdAndUpdate(id, { $set: set });
+        }
+
+        return res.status(200).json({ message: "Successfully updated regular items", flag: true });
+    }catch(err){
+        if (err.code === 11000){
+            return res.status(409).json({ message: "Regular item name already exists", flag: false });
+        }
+        return res.status(500).json({ message: "Failed to update regular items", error: err.message, flag: false });
+    }
+}
+
 //edit client
 module.exports.getAllRegularClients= async(req, res)=>{
     try{
@@ -351,8 +490,8 @@ module.exports.getAllRegularClients= async(req, res)=>{
 
 module.exports.addNewRegularClient= async(req, res)=>{
     try{
-        const {name, phoneNo, address="NA", gst, items= []}= req.body;
-        const client= new RegularClient({name, phoneNo, address, gst, items});
+        const {name, phoneNo, address="NA", gst, items= [], isSender = false}= req.body;
+        const client= new RegularClient({name, phoneNo, address, gst, items, isSender: toBoolean(isSender)});
         
         await client.save();
     
@@ -366,17 +505,39 @@ module.exports.editRegularClient= async(req, res)=>{
     try{
         const { id, updates }= req.body;
 
-        const client= await RegularClient.findByIdAndUpdate(id, {$set: updates});
+        if (!id || !updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
+            return res.status(400).json({message: "Client id and updates are required", flag: false});
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'isSender')) {
+            updates.isSender = toBoolean(updates.isSender);
+        }
+
+        if (typeof updates.name === 'string') {
+            const trimmedName = updates.name.trim();
+            if (!trimmedName) {
+                return res.status(400).json({message: "Client name cannot be empty", flag: false});
+            }
+            updates.name = trimmedName;
+        }
+
+        const client= await RegularClient.findByIdAndUpdate(
+            id,
+            {$set: updates},
+            { new: true, runValidators: true }
+        );
         if(!client){
             return res.status(404).json({message: "No client found with given Id", flag: false});
         }
         return res.status(200).json({ message: "Successfully edited client details", flag: true, body: client });
 
     }catch(err){
+        if (err.code === 11000){
+            return res.status(409).json({message: "Client name already exists", flag: false});
+        }
         return res.status(500).json({message: "Failed to update client details", error: err.message, flag: false});
     }
 }
-
 module.exports.deleteRegularClient= async(req, res)=>{
     try{
         const {id}= req.body;

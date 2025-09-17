@@ -1,36 +1,40 @@
-const mongoose= require("mongoose");
+﻿const mongoose = require("mongoose");
 
-const regularClientchema= new mongoose.Schema({
+const regularClientSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
         unique: true
     },
-    phoneNo:{
+    phoneNo: {
         type: String,
         required: true
     },
-    address:{
+    address: {
         type: String
     },
-    gst:{
+    gst: {
         type: String
     },
-    items:[{
-        itemDetails:{
+    isSender: {
+        type: Boolean,
+        default: false
+    },
+    items: [{
+        itemDetails: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'RegularItem',
         },
-        hamali:{
+        hamali: {
             type: Number,
         },
-        freight:{
+        freight: {
             type: Number,
         },
-        statisticalCharges:{
+        statisticalCharges: {
             type: Number,
         }
     }]
 });
 
-module.exports= mongoose.model('RegularClient', regularClientchema);
+module.exports = mongoose.model('RegularClient', regularClientSchema);
