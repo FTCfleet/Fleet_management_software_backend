@@ -343,27 +343,26 @@ module.exports.getLedgersByDate = async(req, res) => {
 
 module.exports.generateExcel = async (req, res) => {
     try {
-        const { destination, month } = req.params;
+        const { destination, dateRange } = req.params;
 
-        if (!destination || !month) {
-            return res.status(400).json({ message: "Destination warehouse and month are required", flag: false });
+        if (!destination || !dateRange) {
+            return res.status(400).json({ message: "Destination warehouse and date range are required", flag: false });
 
         }
 
-        // Parse month (expects YYYY-MM or YYYYMM)
-        let year, mon;
-        if (month.includes('-')) {
-            [year, mon] = month.split('-');
-        } else if (month.length === 6) {
-            year = month.slice(0, 4);
-            mon = month.slice(4);
-        } else {
-            return res.status(400).json({ message: "Invalid month format", flag: false });
+        const rangeMatch = /^(\d{2})(\d{2})(\d{4})-(\d{2})(\d{2})(\d{4})$/.exec(dateRange);
+        if (!rangeMatch) {
+            return res.status(400).json({ message: "Invalid date range format", flag: false });
         }
 
-        const startDate = new Date(Date.UTC(parseInt(year), parseInt(mon) - 1, 1));
-        const endDate = new Date(Date.UTC(parseInt(year), parseInt(mon), 0, 23, 59, 59, 999));
+        const [, startDay, startMonth, startYear, endDay, endMonth, endYear] = rangeMatch;
 
+        const startDate = new Date(Date.UTC(parseInt(startYear, 10), parseInt(startMonth, 10) - 1, parseInt(startDay, 10)));
+        const endDate = new Date(Date.UTC(parseInt(endYear, 10), parseInt(endMonth, 10) - 1, parseInt(endDay, 10), 23, 59, 59, 999));
+
+        if (startDate > endDate) {
+            return res.status(400).json({ message: "Start date must be before end date", flag: false });
+        }
         const destWarehouse = await Warehouse.findOne({ warehouseID: destination });
         if (!destWarehouse) {
             return res.status(404).json({ message: "Destination warehouse not found", flag: false });
@@ -398,16 +397,14 @@ module.exports.generateExcel = async (req, res) => {
             return `${dd}-${mm}-${yyyy}`;
         };
 
-        const monthLabel = new Date(Date.UTC(parseInt(year), parseInt(mon) - 1, 1))
-            .toLocaleString('en-US', { month: 'short', year: '2-digit' })
-            .replace(' ', '-');
+        const rangeLabel = `${formatDate(startDate)} to ${formatDate(endDate)}`;
 
         const workbook = new ExcelJS.Workbook();
         for (let srcId in grouped) {
             const ws = workbook.addWorksheet(srcId);
 
             ws.addRow(['Source Warehouse', srcId]);
-            ws.addRow(['MONTH', monthLabel]);
+            ws.addRow(['DATE RANGE', rangeLabel]);
             ws.addRow(['Destination Warehouse', destination]);
 
             ws.addRow([]);
@@ -465,7 +462,7 @@ module.exports.generateExcel = async (req, res) => {
 
         }
         const buffer = await workbook.xlsx.writeBuffer();
-        const file = { name: `Ledger_Report_${destination}_${month}.xlsx`, buffer };
+        const file = { name: `Ledger_Report_${destination}_${dateRange}.xlsx`, buffer };
 
 
         // if (files.length === 1) {
@@ -480,7 +477,7 @@ module.exports.generateExcel = async (req, res) => {
         // }
         // const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
         // res.setHeader('Content-Type', 'application/zip');
-        // res.setHeader('Content-Disposition', `attachment; filename="Ledger_Reports_${destination}_${month}.zip"`);
+        // res.setHeader('Content-Disposition', `attachment; filename="Ledger_Reports_${destination}_${dateRange}.zip"`);
         // return res.send(zipBuffer);
 
     } catch (err) {
