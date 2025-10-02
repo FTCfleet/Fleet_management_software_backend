@@ -123,7 +123,7 @@ module.exports.generatePDF = async (req, res) => {
             .populate({
                 path: 'parcels',
                 populate: [
-                    { path: 'items' },
+                    { path: 'items', populate: { path: 'itemType' } },
                     { path: 'sender' },
                     { path: 'receiver' },
                     { path: 'sourceWarehouse' },
@@ -228,7 +228,7 @@ module.exports.trackLedger = async (req, res) => {
             .populate({
                 path: 'parcels',
                 populate: [
-                    { path: 'items' }, 
+                    { path: 'items', populate: { path: 'itemType' } }, 
                     { path: 'sender' },
                     { path: 'receiver' },
                     { path: 'sourceWarehouse' },
@@ -299,7 +299,7 @@ module.exports.getLedgersByDate = async(req, res) => {
             .populate({
                 path: 'parcels',
                 populate: [
-                    { path: 'items' },
+                    { path: 'items', populate: { path: 'itemType' } },
                     { path: 'sender' },
                     { path: 'receiver' },
                     { path: 'sourceWarehouse' },
@@ -566,7 +566,7 @@ module.exports.editLedger = async (req, res) => {
         const updatedLedger = await Ledger.findOne({ledgerId: id}).populate({
             path: 'parcels',
             populate: [
-                { path: 'items' }, 
+                { path: 'items', populate: { path: 'itemType' } }, 
                 { path: 'sender' },
                 { path: 'receiver' },
                 { path: 'sourceWarehouse' },

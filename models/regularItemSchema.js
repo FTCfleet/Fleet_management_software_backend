@@ -5,9 +5,9 @@ const regularItemSchema= new mongoose.Schema({
         type: String,
         required: true
     },
-    type:{
-        type: String,
-        enum: ['C/B', 'G/B', 'BUNDLE'],
+    itemType:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ItemType',
         required: true
     },
     freight:{

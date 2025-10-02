@@ -5,6 +5,7 @@ const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const Warehouse = require("../models/warehouseSchema.js");
+const ItemType = require("../models/itemTypeSchema.js");
 // const puppeteer = require('puppeteer');
 const formatToIST = require("../utils/dateFormatter.js");
 const puppeteer = require('puppeteer-core');
@@ -15,6 +16,32 @@ const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
 const Employee = require("../models/employeeSchema.js");
 const fs = require('fs');
 const path = require('path');
+
+const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
+const normalizeItemTypeName = (input) => {
+    if (typeof input === 'string') {
+        return input.trim();
+    }
+    if (input && typeof input === 'object' && typeof input.name === 'string') {
+        return input.name.trim();
+    }
+    return '';
+};
+
+const createParcelPopulateConfig = (includeLastModified = false) => {
+    const basePopulate = [
+        { path: 'items', populate: { path: 'itemType' } },
+        { path: 'sender' },
+        { path: 'receiver' },
+        { path: 'sourceWarehouse' },
+        { path: 'destinationWarehouse' },
+        { path: 'addedBy' }
+    ];
+    if (includeLastModified) {
+        basePopulate.push({ path: 'lastModifiedBy' });
+    }
+    return basePopulate;
+};
 
 module.exports.newParcel = async (req, res) => {
     try {
@@ -28,10 +55,26 @@ module.exports.newParcel = async (req, res) => {
 
         const destinationWarehouseId = await Warehouse.findOne({ warehouseID: destinationWarehouse });
         const itemEntries = [];
+        const typeCache = new Map();
         for (const item of items) {
+            const typeName = normalizeItemTypeName(item.type);
+            if (!typeName) {
+                return res.status(400).json({ message: "Item type name is required for each item", flag: false });
+            }
+
+            const cacheKey = typeName.toLowerCase();
+            let typeRecord = typeCache.get(cacheKey);
+            if (!typeRecord) {
+                typeRecord = await ItemType.findOne({ name: typeName }).collation(ITEM_TYPE_COLLATION);
+                if (!typeRecord) {
+                    return res.status(400).json({ message: `Item type "${typeName}" does not exist`, flag: false });
+                }
+                typeCache.set(cacheKey, typeRecord);
+            }
+
             const newItem = new Item({
                 name: item.name,
-                type: item.type,
+                itemType: typeRecord._id,
                 quantity: item.quantity,
                 freight: item.freight,
                 hamali: item.hamali,
@@ -78,7 +121,7 @@ module.exports.newParcel = async (req, res) => {
 module.exports.trackParcel = async (req, res) => {
     try {
         const { id } = req.params;
-        const parcel = await Parcel.findOne({ trackingId: id }).populate('items sender receiver sourceWarehouse destinationWarehouse addedBy lastModifiedBy');
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig(true));
         if (!parcel) {
             return res.status(201).json({ message: `Can't find any Parcel with Tracking Id. ${id}`, body: {}, flag: false });
         }
@@ -140,7 +183,7 @@ module.exports.allParcel = async (req, res) => {
                     placedAt: { $gte: startDate, $lte: endDate },
                     $or: [{ sourceWarehouse: employeeWHcode }, { destinationWarehouse: employeeWHcode }]
                 })
-                .populate('items sender receiver sourceWarehouse destinationWarehouse addedBy');
+                .populate(createParcelPopulateConfig());
             }else{
                 parcels = await Parcel.find({
                     placedAt: { $gte: startDate, $lte: endDate },
@@ -148,14 +191,14 @@ module.exports.allParcel = async (req, res) => {
                     sourceWarehouse: employeeWHcode,
                     destinationWarehouse: destWh._id
                 })
-                .populate('items sender receiver sourceWarehouse destinationWarehouse addedBy');
+                .populate(createParcelPopulateConfig());
             }
         } else {
             if(!src && !dest){
                 parcels = await Parcel.find({
                     placedAt: { $gte: startDate, $lte: endDate },
                 })
-                .populate('items sender receiver sourceWarehouse destinationWarehouse addedBy');
+                .populate(createParcelPopulateConfig());
             }else{
                 parcels = await Parcel.find({
                     placedAt: { $gte: startDate, $lte: endDate },
@@ -163,7 +206,7 @@ module.exports.allParcel = async (req, res) => {
                     destinationWarehouse: destWh._id,
                     status: 'arrived'
                 })
-                .populate('items sender receiver sourceWarehouse destinationWarehouse addedBy');
+                .populate(createParcelPopulateConfig());
             }
         }
         // console.log(parcels);
@@ -183,7 +226,7 @@ module.exports.generateQRCodes = async (req, res) => {
         const { id } = req.params;
         const { count = 1 } = req.query;
 
-        const parcel = await Parcel.findOne({ trackingId: id }).populate('items sender receiver sourceWarehouse destinationWarehouse addedBy');
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
         if (!parcel) {
             return res.status(404).json({ message: `Parcel not found. Tracking ID: ${id}`, flag: false });
         }
@@ -249,7 +292,7 @@ module.exports.generateQRCodes = async (req, res) => {
 module.exports.generateLR = async (req, res) => {
     try {
         const { id } = req.params;
-        const parcel = await Parcel.findOne({ trackingId: id }).populate('items sourceWarehouse destinationWarehouse sender receiver addedBy');
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
 
         if (!parcel) {
             return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
@@ -345,10 +388,26 @@ module.exports.editParcel = async (req, res) => {
 
         // Update items if provided
         if (updateData.addItems) {
+            const typeCache = new Map();
             for (const item of updateData.addItems) {
+                const typeName = normalizeItemTypeName(item.type);
+                if (!typeName) {
+                    return res.status(400).json({ message: "Item type name is required for each item", flag: false });
+                }
+
+                const cacheKey = typeName.toLowerCase();
+                let typeRecord = typeCache.get(cacheKey);
+                if (!typeRecord) {
+                    typeRecord = await ItemType.findOne({ name: typeName }).collation(ITEM_TYPE_COLLATION);
+                    if (!typeRecord) {
+                        return res.status(400).json({ message: `Item type "${typeName}" does not exist`, flag: false });
+                    }
+                    typeCache.set(cacheKey, typeRecord);
+                }
+
                 const newItem = new Item({
                     name: item.name,
-                    type: item.type,
+                    itemType: typeRecord._id,
                     hamali: item.hamali,
                     freight: item.freight,
                     statisticalCharges: item.hamali,

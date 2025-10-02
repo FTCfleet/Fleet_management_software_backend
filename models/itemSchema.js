@@ -11,9 +11,9 @@ const itemSchema = new mongoose.Schema({
         required: true
     },
 
-    type:{
-        type: String,
-        enum: ['C/B', 'G/B', 'BUNDLE'],
+    itemType: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ItemType',
         required: true
     },
 

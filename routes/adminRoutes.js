@@ -39,6 +39,12 @@ router.route('/manage/regular-item')
     .put(authenticateToken, isAdmin, catchAsync(adminController.editRegularItems))
     .delete(authenticateToken, isAdmin, catchAsync(adminController.deleteRegularItem));
 
+router.route('/manage/item-type')
+    .get(authenticateToken, catchAsync(adminController.getAllItemTypes))
+    .post(authenticateToken, isAdmin, catchAsync(adminController.addItemType))
+    .put(authenticateToken, isAdmin, catchAsync(adminController.editItemType))
+    .delete(authenticateToken, isAdmin, catchAsync(adminController.deleteItemType));
+
 router.route('/manage/regular-client')
     .get(authenticateToken, catchAsync(adminController.getAllRegularClients))
     .post(authenticateToken, isAdmin, catchAsync(adminController.addNewRegularClient))
