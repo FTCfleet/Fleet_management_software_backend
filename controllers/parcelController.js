@@ -71,7 +71,12 @@ module.exports.newParcel = async (req, res) => {
                 }
                 typeCache.set(cacheKey, typeRecord);
             }
-
+            if (item.name.endsWith(`(${typeRecord.name})`)) {
+                item.name = item.name;
+            }
+            else{
+                item.name = `${item.name} (${typeRecord.name})`;
+            }
             const newItem = new Item({
                 name: item.name,
                 itemType: typeRecord._id,
@@ -403,6 +408,13 @@ module.exports.editParcel = async (req, res) => {
                         return res.status(400).json({ message: `Item type "${typeName}" does not exist`, flag: false });
                     }
                     typeCache.set(cacheKey, typeRecord);
+                }
+
+                if (item.name.endsWith(`(${typeRecord.name})`)) {
+                    item.name = item.name;
+                }
+                else{
+                    item.name = `${item.name} (${typeRecord.name})`;
                 }
 
                 const newItem = new Item({

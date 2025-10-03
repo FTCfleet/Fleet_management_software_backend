@@ -429,7 +429,7 @@ module.exports.addItemType = async (req, res) => {
             return res.status(401).json({ message: "Item type name is required", flag: false });
         }
 
-        const itemType = new ItemType({ name: trimmedName });
+        const itemType = new ItemType({ name: trimmedName.toUpperCase() });
         await itemType.save();
 
         return res.status(201).json({ message: "Successfully added item type", body: itemType, flag: true });
@@ -447,14 +447,14 @@ module.exports.editItemType = async (req, res) => {
         const trimmedName = typeof name === 'string' ? name.trim() : '';
 
         if (!id) {
-            return res.status(401).json({ message: "Item type id is required", flag: false });
+            return res.status(400).json({ message: "Item type id is required", flag: false });
         }
 
         if (!trimmedName) {
-            return res.status(401).json({ message: "Item type name is required", flag: false });
+            return res.status(400).json({ message: "Item type name is required", flag: false });
         }
 
-        const updatedItemType = await ItemType.findByIdAndUpdate(id, { name: trimmedName }, { new: true, runValidators: true });
+        const updatedItemType = await ItemType.findByIdAndUpdate(id, { name: trimmedName.toUpperCase() }, { new: true, runValidators: true });
 
         if (!updatedItemType) {
             return res.status(404).json({ message: `No item type found with ID: ${id}`, flag: false });
@@ -474,7 +474,7 @@ module.exports.deleteItemType = async (req, res) => {
         const { id } = req.body;
 
         if (!id) {
-            return res.status(401).json({ message: "Item type id is required", flag: false });
+            return res.status(400).json({ message: "Item type id is required", flag: false });
         }
 
         const deletedItemType = await ItemType.findByIdAndDelete(id);
