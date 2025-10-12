@@ -159,7 +159,7 @@ module.exports.allParcel = async (req, res) => {
         // console.log(q);
         let srcWh= null;
         let destWh= null;
-        if(src){
+        if(src && src !== 'all'){
             srcWh = await Warehouse.findOne({ warehouseID: src });
             if(!srcWh){
                 return res.status(404).json({ message: `Source Warehouse with ID ${src} not found`, flag: false });
@@ -182,29 +182,16 @@ module.exports.allParcel = async (req, res) => {
 
 
         let parcels;
-        if (req.user.role !== 'admin') {
-            if(!dest){
+        if (src){
+            if (src === 'all'){
                 parcels = await Parcel.find({
                     placedAt: { $gte: startDate, $lte: endDate },
-                    $or: [{ sourceWarehouse: employeeWHcode }, { destinationWarehouse: employeeWHcode }]
-                })
-                .populate(createParcelPopulateConfig());
-            }else{
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                    status: 'arrived',
-                    sourceWarehouse: employeeWHcode,
-                    destinationWarehouse: destWh._id
+                    destinationWarehouse: destWh._id,
+                    status: 'arrived'
                 })
                 .populate(createParcelPopulateConfig());
             }
-        } else {
-            if(!src && !dest){
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                })
-                .populate(createParcelPopulateConfig());
-            }else{
+            else{
                 parcels = await Parcel.find({
                     placedAt: { $gte: startDate, $lte: endDate },
                     sourceWarehouse: srcWh._id,
@@ -212,9 +199,24 @@ module.exports.allParcel = async (req, res) => {
                     status: 'arrived'
                 })
                 .populate(createParcelPopulateConfig());
+
             }
         }
-        // console.log(parcels);
+        else{
+            if (req.user.role === 'admin') {
+                parcels = await Parcel.find({
+                    placedAt: { $gte: startDate, $lte: endDate },
+                })
+                .populate(createParcelPopulateConfig());
+            }
+            else{
+                parcels = await Parcel.find({
+                    placedAt: { $gte: startDate, $lte: endDate },
+                    $or: [{ sourceWarehouse: employeeWHcode }, { destinationWarehouse: employeeWHcode }],
+                })
+                .populate(createParcelPopulateConfig());
+            }
+        }
         return res.status(200).json({ body: parcels, message: "Successfully fetched all parcels", flag: true });
 
     } catch (err) {
@@ -495,7 +497,7 @@ module.exports.editParcel = async (req, res) => {
         }
 
         parcel.lastModifiedBy = req.user._id;
-        parcel.lastModifiedAt = new Date();
+        parcel.lastModifiedAt = new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
 
         await parcel.save();
 

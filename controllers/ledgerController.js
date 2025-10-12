@@ -84,8 +84,8 @@ module.exports.createLedger = async (req, res) => {
         const newLedger = new Ledger({
             ledgerId: generateUniqueId(14),
             vehicleNo: data.vehicleNo,
-            status: 'pending',
-            dispatchedAt: new Date(),
+            status: 'dispatched',
+            dispatchedAt: new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)),
             parcels,
             scannedBySource: null,
             scannedByDest: null,
@@ -598,7 +598,7 @@ module.exports.verifyLedger = async(req, res) => {
         }
 
         ledger.status='completed';
-        ledger.deliveredAt=new Date();
+        ledger.deliveredAt=new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
         ledger.verifiedByDest=req.user._id;
 
         await ledger.save();
