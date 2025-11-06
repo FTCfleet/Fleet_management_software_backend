@@ -183,7 +183,6 @@ const generateLedger = (ledger, driver, options = {}) => {
                     border-radius: 6px;
                     overflow: hidden;
                     border: 1px solid #333;
-                    break-inside: avoid-page;
                 }
 
                 table {

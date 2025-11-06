@@ -131,13 +131,14 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="meta">
                 <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
                 <span>Goods are at owner's risk</span>
-                <span>GSTID: 36AAFFF2744R12X</span>
+                <span>GSTID: 36AAFFF2744R1ZX</span>
                         </div>
             
                     </div>
         
         <div class="footer">
-            <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Ramagundam-Cell: 9866239010 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
+            <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
+            <div class="branches">FTC not responsible for Leakage & Breakage.</div>
                 </div>
             <div style="text-align: right; display: absolute;font-size: 6px">Created by: ${parcel.addedBy.name}</div>
             </div>
