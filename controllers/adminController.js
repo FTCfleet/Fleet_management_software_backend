@@ -32,6 +32,8 @@ const normalizeItemTypeName = (input) => {
     return '';
 };
 
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 //
 module.exports.fetchAllEmployees = async (req, res) => {
     try {
@@ -298,9 +300,38 @@ module.exports.deleteLedger = async (req, res) => {
 
 module.exports.getAllRegularItems= async(req, res)=>{
     try{
-        const allItems= await RegularItem.find().sort({name: 1}).populate('itemType');
+        const { page = 1, name } = req.query || {};
+        const PAGE_SIZE = 200;
+        const parsedPage = parseInt(page, 10);
+        const pageNumber = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
-        return res.status(200).json({ message: "Successfully fetched all regular items", body: allItems, flag: true});
+        const filters = {};
+        if (typeof name === 'string' && name.trim()) {
+            filters.name = { $regex: `^${escapeRegex(name.trim())}`, $options: 'i' };
+        }
+
+        const skip = (pageNumber - 1) * PAGE_SIZE;
+
+        const [items, totalItems] = await Promise.all([
+            RegularItem.find(filters)
+                .sort({ name: 1 })
+                .skip(skip)
+                .limit(PAGE_SIZE)
+                .populate('itemType'),
+            RegularItem.countDocuments(filters)
+        ]);
+
+        return res.status(200).json({
+            message: "Successfully fetched all regular items",
+            body: {
+                items,
+                page: pageNumber,
+                pageSize: PAGE_SIZE,
+                totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / PAGE_SIZE),
+                totalItems
+            },
+            flag: true
+        });
     }catch(err){
         return res.status(500).json({ message: "Failed to fetch all regular items", error: err.message, flag: false});
     }
@@ -597,14 +628,47 @@ module.exports.editRegularItems= async(req, res)=>{
 //edit client
 module.exports.getAllRegularClients= async(req, res)=>{
     try{
-        const allClients= await RegularClient.find().sort({name: 1}).populate({
-            path: 'items.itemDetails',
-            populate: { path: 'itemType' }
-        });
+        const { page = 1, name, type = 'all' } = req.query || {};
+        const PAGE_SIZE = 200;
+        const parsedPage = parseInt(page, 10);
+        const pageNumber = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
-        return res.status(200).json({message: "Successfully fetched all regular clients", body: allClients, flag:true});
+        const filters = {};
+        if (typeof name === 'string' && name.trim()) {
+            filters.name = { $regex: `^${escapeRegex(name.trim())}`, $options: 'i' };
+        }
+
+        const normalizedType = typeof type === 'string' ? type.trim().toLowerCase() : 'all';
+        if (normalizedType === 'sender') {
+            filters.isSender = true;
+        } else if (normalizedType === 'receiver') {
+            filters.isSender = false;
+        }
+
+        const skip = (pageNumber - 1) * PAGE_SIZE;
+
+        const [clients, totalClients] = await Promise.all([
+            RegularClient.find(filters)
+                .sort({ name: 1 })
+                .skip(skip)
+                .limit(PAGE_SIZE)
+                .select('-items'),
+            RegularClient.countDocuments(filters)
+        ]);
+
+        return res.status(200).json({
+            message: "Successfully fetched all regular clients",
+            body: {
+                clients,
+                page: pageNumber,
+                pageSize: PAGE_SIZE,
+                totalPages: totalClients === 0 ? 0 : Math.ceil(totalClients / PAGE_SIZE),
+                totalClients
+            },
+            flag:true
+        });
     }catch(err){
-        return res.status(500).json({ message: "Failed to fetch all regular items", error: err.message, flag: false});
+        return res.status(500).json({ message: "Failed to fetch all regular clients", error: err.message, flag: false});
     }
 }
 
