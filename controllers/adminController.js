@@ -364,7 +364,7 @@ module.exports.addNewRegularItems= async(req, res)=>{
             return res.status(401).json({ message: "No items provided for creation", flag: false });
         }
 
-        const combinationGuard = new Set();
+        // const combinationGuard = new Set();
         const preparedItems = [];
         const typeCache = new Map();
 
@@ -398,11 +398,11 @@ module.exports.addNewRegularItems= async(req, res)=>{
             }
 
             const finalName = buildRegularItemName(baseName, typeRecord.name);
-            const combinationKey = `${baseName.toLowerCase()}|${typeRecord._id.toString()}`;
-            if (combinationGuard.has(combinationKey)) {
-                return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
-            }
-            combinationGuard.add(combinationKey);
+            // const combinationKey = `${baseName.toLowerCase()}|${typeRecord._id.toString()}`;
+            // if (combinationGuard.has(combinationKey)) {
+            //     return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
+            // }
+            // combinationGuard.add(combinationKey);
 
             preparedItems.push({
                 name: finalName,
@@ -412,9 +412,9 @@ module.exports.addNewRegularItems= async(req, res)=>{
             });
         }
 
-        const lookupFilters = preparedItems.map(({ name, itemType }) => ({ name, itemType }));
-        if (lookupFilters.length > 0) {
-            const conflicts = await RegularItem.find({ $or: lookupFilters }).collation(ITEM_TYPE_COLLATION);
+        const lookupNames = preparedItems.map(({ name }) => name);
+        if (lookupNames.length > 0) {
+            const conflicts = await RegularItem.find({ name: { $in: lookupNames } }).collation(ITEM_TYPE_COLLATION);
             if (conflicts.length > 0) {
                 return res.status(406).json({ message: `Regular item "${conflicts[0].name}" already exists`, flag: false });
             }
@@ -707,7 +707,19 @@ module.exports.getRegularClientDirectory = async (req, res) => {
 module.exports.addNewRegularClient= async(req, res)=>{
     try{
         const {name, phoneNo, address="NA", gst, items= [], isSender = false}= req.body;
-        const client= new RegularClient({name, phoneNo, address, gst, items, isSender: toBoolean(isSender)});
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
+        if (!trimmedName) {
+            return res.status(401).json({ message: "Client name is required", flag: false });
+        }
+
+        const normalizedIsSender = toBoolean(isSender);
+
+        const existingClient = await RegularClient.findOne({ name: trimmedName }).collation(ITEM_TYPE_COLLATION);
+        if (existingClient) {
+            return res.status(409).json({ message: "Regular client already exists for the selected type", flag: false });
+        }
+
+        const client= new RegularClient({name: trimmedName, phoneNo, address, gst, items, isSender: normalizedIsSender});
         
         await client.save();
     
