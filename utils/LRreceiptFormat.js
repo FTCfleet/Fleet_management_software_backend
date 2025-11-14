@@ -1,4 +1,4 @@
-const formatToIST = require("../utils/dateFormatter.js");
+const {formatToIST} = require("../utils/dateFormatter.js");
 
 const generateLR = (parcel, auto = 0, options = {}) => {
     const { logoDataUrl } = options;

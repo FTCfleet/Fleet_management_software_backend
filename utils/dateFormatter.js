@@ -1,30 +1,23 @@
-const formatToIST = (date) => {
-    const options = {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    };
-
-    const dateObj = new Date(date);
-    // Convert to IST by adding 5 hours and 30 minutes
-    dateObj.setMinutes(dateObj.getMinutes());
+const formatToIST = (dateObj) => {
+    const date = new Date(dateObj);
+    // console.log(date.getUTCHours());
+    const hours24 = date.getUTCHours();
+    const hours12 = (hours24 % 12 || 12).toString().padStart(2,'0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+    const ampm = hours24 >= 12 ? "PM" : "AM";
     
-    const formattedTime = dateObj.toLocaleString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-    
-    const formattedDate = dateObj.toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const year = date.getUTCFullYear();
+    // console.log(hours12);
 
-    return `${formattedTime}, ${formattedDate}`;
+    return `${hours12}:${minutes} ${ampm} ${day}/${month}/${year}`;
 };
 
-module.exports = formatToIST;
+const getNow = () => {
+    const dd = new Date();
+    const date = new Date(Date.UTC(dd.getFullYear(), dd.getMonth(), dd.getDate(), dd.getHours(), dd.getMinutes()));
+    return date;
+}
+
+module.exports = {formatToIST, getNow};

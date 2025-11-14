@@ -7,7 +7,7 @@ const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const Warehouse = require("../models/warehouseSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
 // const puppeteer = require('puppeteer');
-const formatToIST = require("../utils/dateFormatter.js");
+const {formatToIST, getNow} = require("../utils/dateFormatter.js");
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 // if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
@@ -109,10 +109,13 @@ module.exports.newParcel = async (req, res) => {
             freight,
             hamali, 
             charges,
+            placedAt: getNow(),
+            lastModifiedAt: getNow(),
             addedBy: req.user._id,
             lastModifiedBy: req.user._id,
             doorDeliveryCharge: isDoorDelivery ? doorDeliveryCharge : 0
         });
+        // console.log(newParcel.placedAt);
 
         await newParcel.save();
 
@@ -180,7 +183,8 @@ module.exports.allParcel = async (req, res) => {
         const startDate = new Date(`${formattedDate}T00:00:00.000Z`);
         const endDate = new Date(`${formattedDate}T23:59:59.999Z`);
 
-
+        // console.log(startDate);
+        // console.log(endDate);
         let parcels;
         if (src){
             if (src === 'all'){
@@ -497,8 +501,7 @@ module.exports.editParcel = async (req, res) => {
         }
 
         parcel.lastModifiedBy = req.user._id;
-        parcel.lastModifiedAt = new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
-
+        parcel.lastModifiedAt = getNow();
         await parcel.save();
 
         return res.status(200).json({ flag: true, message: "Parcel updated successfully", body: parcel, flag: true });

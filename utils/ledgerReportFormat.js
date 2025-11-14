@@ -1,4 +1,4 @@
-const formatToIST = require("../utils/dateFormatter.js");
+const {formatToIST} = require("../utils/dateFormatter.js");
 
 const generateLedgerReport = (allLedgers, startDate, endDate, isForVehicle) => {
     const ledgerCount= allLedgers.length;

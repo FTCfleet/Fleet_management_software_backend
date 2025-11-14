@@ -1,8 +1,8 @@
-const formatToIST = require('../utils/dateFormatter.js')
+const {formatToIST} = require('../utils/dateFormatter.js')
 
 const generateLedger = (ledger, driver, options = {}) => {
     const { logoDataUrl } = options;
-    console.log(ledger)
+    // console.log(ledger)
     let index = 1
     const toPayParcels = (ledger.parcels || []).filter(p => p.payment === 'To Pay');
     const paidParcels = (ledger.parcels || []).filter(p => p.payment === 'Paid');
@@ -24,15 +24,35 @@ const generateLedger = (ledger, driver, options = {}) => {
         else return `${hamaliSum}`;
     };
 
+    const getMostFrequent = (arr) => {
+        const freq = {};
+        let maxCount = 0;
+        let result = null;
+
+        for (const item of arr) {
+            freq[item] = (freq[item] || 0) + 1;
+
+            if (freq[item] > maxCount) {
+                maxCount = freq[item];
+                result = item;
+            }
+        }
+
+        return result;
+    };
+
     const renderParcelRow = (parcel, dd) => {
         
         let hamaliRow = parcel.hamali;
         if (dd)
             hamaliRow = formatHamaliCell(parcel);
+        let itemType = getMostFrequent(parcel.items.map((item) => item.itemType.name));
+        // console.log('shdjfksdjnfsdfksdkf\t\t\t\t\t' +itemType);
+        // console.log('shdjfksdjnfsdfksdkf');
         return `
         <tr>
             <td>${index++}</td>
-            <td>${parcel.placedAt.toISOString().split("T")[0]}</td>
+            <td>${itemType}</td>
             <td>${parcel.trackingId}</td>
             <td>${parcel.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
             <td>${(parcel.receiver && parcel.receiver.name) ? parcel.receiver.name : 'NA'}</td>
@@ -256,7 +276,7 @@ const generateLedger = (ledger, driver, options = {}) => {
                     <thead>
                         <tr>
                             <th>S.No.</th>
-                            <th>Date</th>
+                            <th>Item Type</th>
                             <th>LR No.</th>
                             <th>Pkgs (Qty)</th>
                             <th>Receiver</th>

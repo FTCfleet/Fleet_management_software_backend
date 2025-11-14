@@ -4,7 +4,7 @@ const Item = require("../models/itemSchema.js");
 const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateLedger = require("../utils/ledgerPdfFormat.js");
 const generateLedgerReport = require("../utils/ledgerReportFormat.js");
-const formatToIST = require("../utils/dateFormatter.js");
+const {formatToIST, getNow} = require("../utils/dateFormatter.js");
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
 const Employee= require("../models/employeeSchema.js");
@@ -85,7 +85,7 @@ module.exports.createLedger = async (req, res) => {
             ledgerId: generateUniqueId(14),
             vehicleNo: data.vehicleNo,
             status: 'dispatched',
-            dispatchedAt: new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)),
+            dispatchedAt: getNow(),
             parcels,
             scannedBySource: null,
             scannedByDest: null,
@@ -245,7 +245,7 @@ module.exports.trackLedger = async (req, res) => {
             return res.status(201).json({ message: `Can't find any Ledger with ID ${id}`,flag:false });
         }
 
-        return res.status(200).json({ message: "Successful", body: ledger,flag:true });
+        return res.status(200).json({ message: "Successful", body: ledger, flag:true });
 
     } catch (err) {
         return res.status(500).json({ message: "Failed to track ledger", error: err.message,flag:false });
@@ -391,9 +391,9 @@ module.exports.generateExcel = async (req, res) => {
 
         const formatDate = (date) => {
             const d = new Date(date);
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
+            const dd = String(d.getUTCDate()).padStart(2, '0');
+            const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const yyyy = d.getUTCFullYear();
             return `${dd}-${mm}-${yyyy}`;
         };
 
@@ -525,7 +525,7 @@ module.exports.editLedger = async (req, res) => {
             if(delParcels && delParcels.length>0) {
                 for(let pId of delParcels){
                     const temp= await Ledger.findOneAndUpdate({ledgerId: id}, {$pull: {parcels: pId}}, {new: true}); 
-                    console.log(temp);
+                    // console.log(temp);
                     await temp.save();
                 }
             }
@@ -598,7 +598,7 @@ module.exports.verifyLedger = async(req, res) => {
         }
 
         ledger.status='completed';
-        ledger.deliveredAt=new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
+        ledger.deliveredAt = getNow();
         ledger.verifiedByDest=req.user._id;
 
         await ledger.save();

@@ -92,13 +92,13 @@ const parcelSchema = new mongoose.Schema({
 
     lastModifiedAt:{
         type: Date,
-        default: Date.now,
+        // default: Date.now,
         required: false
     },
 
     placedAt:{
         type: Date,
-        default: Date.now,
+        // default: Date.now,
         required: true
     },
 
