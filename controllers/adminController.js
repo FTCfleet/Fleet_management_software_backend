@@ -337,6 +337,22 @@ module.exports.getAllRegularItems= async(req, res)=>{
     }
 }
 
+module.exports.getRegularItemDirectory = async (req, res) => {
+    try{
+        const items = await RegularItem.find()
+            .sort({ name: 1 })
+            .populate('itemType');
+
+        return res.status(200).json({
+            message: "Successfully fetched regular item directory",
+            body: items,
+            flag: true
+        });
+    }catch(err){
+        return res.status(500).json({ message: "Failed to fetch regular item directory", error: err.message, flag: false});
+    }
+};
+
 
 
 
@@ -671,6 +687,22 @@ module.exports.getAllRegularClients= async(req, res)=>{
         return res.status(500).json({ message: "Failed to fetch all regular clients", error: err.message, flag: false});
     }
 }
+
+module.exports.getRegularClientDirectory = async (req, res) => {
+    try{
+        const clients = await RegularClient.find()
+            .sort({ name: 1 })
+            .select('name phoneNo address gst isSender');
+
+        return res.status(200).json({
+            message: "Successfully fetched regular client directory",
+            body: clients,
+            flag: true
+        });
+    }catch(err){
+        return res.status(500).json({ message: "Failed to fetch regular client directory", error: err.message, flag: false});
+    }
+};
 
 module.exports.addNewRegularClient= async(req, res)=>{
     try{

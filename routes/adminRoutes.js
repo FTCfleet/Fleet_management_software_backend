@@ -54,4 +54,11 @@ router.route('/manage/regular-client')
 router.route('/regular-client-items/:id')
     .get(authenticateToken, catchAsync(adminController.getItemForRegularClient));
 
+
+router.route('/regular-clients')
+    .get(authenticateToken, catchAsync(adminController.getRegularClientDirectory));
+
+router.route('/regular-items')
+    .get(authenticateToken, catchAsync(adminController.getRegularItemDirectory));
+
 module.exports= router;
