@@ -16,8 +16,9 @@ const formatToIST = (dateObj) => {
 
 const getNow = () => {
     const dd = new Date();
-    const date = new Date(Date.UTC(dd.getFullYear(), dd.getMonth(), dd.getDate(), dd.getHours(), dd.getMinutes()));
-    return date;
+    // console.log(dd.toISOString());
+    // const date = new Date(Date.UTC(dd.getFullYear(), dd.getMonth(), dd.getDate(), dd.getHours(), dd.getMinutes()));
+    return dd.toISOString();
 }
 
 module.exports = {formatToIST, getNow};
