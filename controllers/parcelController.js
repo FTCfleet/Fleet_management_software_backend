@@ -1,5 +1,7 @@
 const Parcel = require("../models/parcelSchema.js");
 const Client = require("../models/clientSchema.js");
+const RegularClient = require("../models/regularClientSchema.js");
+const RegularItem = require("../models/regularItemSchema.js");
 const Item = require("../models/itemSchema.js");
 const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
@@ -18,6 +20,17 @@ const fs = require('fs');
 const path = require('path');
 
 const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
+const normalizeString = (value) => typeof value === 'string' ? value.trim() : '';
+const sanitizedValue = (value) => {
+    const normalized = normalizeString(value);
+    if (!normalized) {
+        return null;
+    }
+    if (normalized.toLowerCase() === 'na') {
+        return null;
+    }
+    return normalized;
+};
 const normalizeItemTypeName = (input) => {
     if (typeof input === 'string') {
         return input.trim();
@@ -26,6 +39,39 @@ const normalizeItemTypeName = (input) => {
         return input.name.trim();
     }
     return '';
+};
+const buildRegularClientPayload = (details = {}) => {
+    const name = sanitizedValue(details.name);
+    const phoneNo = sanitizedValue(details.phoneNo);
+    const address = sanitizedValue(details.address);
+    const gst = sanitizedValue(details.gst);
+
+    if (!name || !phoneNo || !address || !gst) {
+        return null;
+    }
+
+    return { name, phoneNo, address, gst };
+};
+
+const upsertRegularClientDirectory = async (details = {}, isSenderEntry = false) => {
+    const payload = buildRegularClientPayload(details);
+    if (!payload) {
+        return null;
+    }
+
+    const existingClient = await RegularClient.findOne({ name: payload.name }).collation(ITEM_TYPE_COLLATION);
+
+    if (!existingClient) {
+        
+        const newClient = new RegularClient({
+            ...payload,
+            isSender: Boolean(isSenderEntry)
+        });
+        
+        await newClient.save();
+        return newClient;
+    }
+    return existingClient;
 };
 
 const createParcelPopulateConfig = (includeLastModified = false) => {
@@ -71,14 +117,29 @@ module.exports.newParcel = async (req, res) => {
                 }
                 typeCache.set(cacheKey, typeRecord);
             }
-            if (item.name.endsWith(`(${typeRecord.name})`)) {
-                item.name = item.name;
+            const rawItemName = typeof item.name === 'string' ? item.name.trim() : '';
+            if (!rawItemName) {
+                continue;
             }
-            else{
-                item.name = `${item.name} (${typeRecord.name})`;
+
+            let finalItemName = rawItemName;
+            if (!finalItemName.endsWith(`(${typeRecord.name})`)) {
+                finalItemName = `${finalItemName} (${typeRecord.name})`;
             }
+
+            const existingItem = await RegularItem.findOne({ name: finalItemName }).collation(ITEM_TYPE_COLLATION);
+            if (!existingItem) {
+                const newItem = new RegularItem({
+                    name: finalItemName,
+                    itemType: typeRecord._id,
+                    freight: item.freight,
+                    hamali: item.hamali,
+                });
+                await newItem.save();
+            }
+
             const newItem = new Item({
-                name: item.name,
+                name: finalItemName,
                 itemType: typeRecord._id,
                 quantity: item.quantity,
                 freight: item.freight,
@@ -88,6 +149,11 @@ module.exports.newParcel = async (req, res) => {
             const savedItem = await newItem.save();
             itemEntries.push(savedItem._id);
         }
+
+        await Promise.all([
+            upsertRegularClientDirectory(senderDetails, true),
+            upsertRegularClientDirectory(receiverDetails, false)
+        ]);
 
         const sender = new Client(senderDetails);
         const receiver = new Client(receiverDetails);

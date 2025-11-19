@@ -81,8 +81,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
 
                     <div class="header">
                         <div class="top-bar">
-                            <div class="top-title">
+                            <div class="logo-wrapper">
                                 ${logoImg}
+                            </div>
+                            <div class="top-title">
                                 <span class="company-name">FRIENDS TRANSPORT CO.</span>
                             </div>
                             <div class="contact">
@@ -167,7 +169,7 @@ const generateLRSheet = (parcel, options = {}) => {
                     width: 100%;
                     height: 100%;
                     border: 1px dotted #000;
-                    padding: 2mm 2mm 2mm 2mm; /* more top space; we'll offset header to keep it in place */
+                    padding: 1mm 2mm 2mm 2mm; /* reduce top padding to offset larger header spacing */
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
@@ -185,7 +187,7 @@ const generateLRSheet = (parcel, options = {}) => {
                     text-decoration: underline;
                     font-size: 5px;
                     margin-top: 0.6mm; /* push jurisdiction lower */
-                    margin-bottom: 1mm;
+                    margin-bottom: 2mm; /* tighter gap before company header */
                 }
 
                 .lr-no{
@@ -200,38 +202,48 @@ const generateLRSheet = (parcel, options = {}) => {
                     margin-bottom: 0.6mm;
                 }
                 .top-bar {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    display: grid;
+                    grid-template-columns: auto 1fr auto;
+                    align-items: flex-start;
+                    column-gap: 3mm;
                     margin-top: -1mm;  /* keep header in place despite added top padding */
                     font-family: Arial, sans-serif;
+                }
+
+                .logo-wrapper {
+                    justify-self: start;
+                    align-self: flex-start;
+                    text-align: left;
+                }
+
+                .logo-wrapper .logo {
+                    width: 14mm; /* more prominent logo */
+                    height: auto;
                 }
 
                 .top-title {
                     display: flex;
                     align-items: center;
-                    font-size: 12px; /* company name size */
-                    font-weight: bold;
+                    justify-content: center;
+                    width: 100%;
                 }
 
                 .company-name {
+                    display: inline-block;
+                    font-size: 14px; /* increased font for better readability */
+                    font-weight: bold;
+                    letter-spacing: 0.6px; /* wider lettering */
                     white-space: nowrap;
-                }
-
-                .top-bar .top-title .logo {
-                    width: 11mm; /* slightly smaller logo */
-                    height: auto;
                 }
 
                 .contact {
                     display: flex;
-                    position: absolute;
-                    right: 14px;
                     flex-direction: column;
                     align-items: flex-end;
                     text-align: right;
                     font-size: 4.5px; /* smaller than title */
                     line-height: 1.2;
+                    justify-self: end;
                 }
 
                 .phone-icon {
@@ -271,7 +283,8 @@ const generateLRSheet = (parcel, options = {}) => {
                 }
                 .address {
                     font-size: 5px;
-                    margin-bottom: 4px;
+                    margin-top: -1mm; /* pull address closer to company name */
+                    margin-bottom: 2px;
                 }
                 .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
                 .route .sep { margin: 0 1mm; }
