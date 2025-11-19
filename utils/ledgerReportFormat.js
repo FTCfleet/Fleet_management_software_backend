@@ -115,7 +115,7 @@ const generateLedgerReport = (allLedgers, startDate, endDate, isForVehicle) => {
                 <p class="address">1651/2, Something, again something, Hyderabad</p>
                 <h2>Ledger Report</h2>
                 ${vehicleNameHeading}
-                <p><strong>${formatToIST(startDate).replace(/ at.*$/, '')} to ${formatToIST(endDate).replace(/ at.*$/, '')}</strong></p>
+                <p><strong>${formatToIST(startDate)} to ${formatToIST(endDate)}</strong></p>
             </div>
             ${ledgerSections}
             <div>

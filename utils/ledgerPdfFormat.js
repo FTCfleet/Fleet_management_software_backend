@@ -261,9 +261,7 @@ const generateLedger = (ledger, driver, options = {}) => {
             </div>
 
             <div id="date-time">
-                <span><strong>Date and Time:</strong> ${formatToIST(
-        ledger.dispatchedAt
-    )}</span>
+                <span><strong>Date and Time:</strong> ${formatToIST(ledger.dispatchedAt)}</span>
                 <span><strong>Memo No:</strong> ${ledger.ledgerId}</span>
                 <span><strong>Lorry Freight:</strong> ${ledger.lorryFreight
         }</span>

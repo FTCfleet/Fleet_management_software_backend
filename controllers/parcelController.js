@@ -135,8 +135,8 @@ module.exports.trackParcel = async (req, res) => {
         }
         const { qrCodeURL } = await generateQRCode(id);
 
-        parcel.placedAt = formatToIST(parcel.placedAt);
-        parcel.lastModifiedAt = formatToIST(parcel.lastModifiedAt);
+        // parcel.placedAt = formatToIST(parcel.placedAt);
+        // parcel.lastModifiedAt = formatToIST(parcel.lastModifiedAt);
 
         // console.log(parcel);
         return res.status(200).json({ message: "Successfully fetched your parcel", body: parcel, flag: true, qrCode: qrCodeURL });
