@@ -24,35 +24,16 @@ const generateLedger = (ledger, driver, options = {}) => {
         else return `${hamaliSum}`;
     };
 
-    const getMostFrequent = (arr) => {
-        const freq = {};
-        let maxCount = 0;
-        let result = null;
-
-        for (const item of arr) {
-            freq[item] = (freq[item] || 0) + 1;
-
-            if (freq[item] > maxCount) {
-                maxCount = freq[item];
-                result = item;
-            }
-        }
-
-        return result;
-    };
-
     const renderParcelRow = (parcel, dd) => {
         
         let hamaliRow = parcel.hamali;
         if (dd)
             hamaliRow = formatHamaliCell(parcel);
-        let itemType = getMostFrequent(parcel.items.map((item) => item.itemType.name));
-        // console.log('shdjfksdjnfsdfksdkf\t\t\t\t\t' +itemType);
-        // console.log('shdjfksdjnfsdfksdkf');
+        let firstItem = parcel.items[0].name;
         return `
         <tr>
             <td>${index++}</td>
-            <td>${itemType}</td>
+            <td>${firstItem}</td>
             <td>${parcel.trackingId}</td>
             <td>${parcel.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
             <td>${(parcel.receiver && parcel.receiver.name) ? parcel.receiver.name : 'NA'}</td>
