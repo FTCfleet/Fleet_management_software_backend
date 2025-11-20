@@ -11,6 +11,7 @@ const dbUrl = process.env.DB_URL;
 const PORT = process.env.PORT || 8000;
 
 const ExpressError = require('./utils/expressError.js');
+const Warehouse = require('./models/warehouseSchema.js');
 
 const authRoutes = require("./routes/authRoutes.js");
 const adminRoutes = require("./routes/adminRoutes.js");
@@ -44,6 +45,16 @@ app.use('/api/parcel', parcelRoutes);
 app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
+
+// app.use('/fix', async (req, res) => {
+//     const warehouses = await Warehouse.find({});
+
+//     for (const wh of warehouses) {
+//       wh.sequence = 0; // default starting value
+//       await wh.save();
+//     }
+//     return res.send("Fixed");
+// });
 
 
 app.all('*', (req, res, next) => {

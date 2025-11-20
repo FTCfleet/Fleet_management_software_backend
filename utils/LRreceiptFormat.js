@@ -76,16 +76,16 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     return `
             <div class="lr-receipt">
                 <div class="content-wrapper">
-                    <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
-                    <div class="lr-no">LR No: ${parcel.trackingId}</div>
-
                     <div class="header">
+                        <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
+                        <div class="lr-no">LR No: ${parcel.trackingId}</div>
                         <div class="top-bar">
                             <div class="logo-wrapper">
                                 ${logoImg}
                             </div>
                             <div class="top-title">
-                                <span class="company-name">FRIENDS TRANSPORT CO.</span>
+                                <div class="company-name">FRIENDS TRANSPORT CO.</div>
+                                <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad.<br> Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
                             </div>
                             <div class="contact">
                                 <div><span class="phone-icon">☎</span> <strong>HYD-01: </strong>24614381</div>
@@ -94,55 +94,51 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                                 <div><strong>BDPURA: </strong>9515409041   </div>
                             </div>
                         </div>
-                        <div class="address">H.O.: 15-1-196/2, Feelkhana, Hyd. Br. O.: Nallagutta, Secunderabad. Br. Off. Near Mir Alam Filter, Bahadurpura, Hyd.</div>
-                        <div class="company-row">
-                            <div class="route-from"><strong>From: </strong> ${parcel.sourceWarehouse.name}</div>
-                            <div class="date"><strong>Date: </strong>${formatToIST(parcel.placedAt)}</div>
-                            <div class="route-to"><strong>To: </strong>${parcel.destinationWarehouse.name}</div>
+                    </div>
+                    <div class="company-row">
+                        <div class="route-from"><strong>From: </strong> ${parcel.sourceWarehouse.name}</div>
+                        <div class="date"><strong>Date: </strong>${formatToIST(parcel.placedAt)}</div>
+                        <div class="route-to"><strong>To: </strong>${parcel.destinationWarehouse.name}</div>
+                    </div>
+
+                    <div class="consignor-consignee">
+                        <div class="consignor">
+                            <span class="label">Consignor:</span>
+                            <span class="value">${parcel.sender.name}</span>
+                            <span class="label">Ph: </span>
+                            <span class="value">${parcel.sender.phoneNo || "____"}</span>
+                        </div>
+                        <div class="consignee">
+                            <span class="label">Consignee:</span>
+                            <span class="value">${parcel.receiver.name}</span>
+                            <span class="label">Ph: </span>
+                            <span class="value">${parcel.receiver.phoneNo || "____"}</span>
                         </div>
                     </div>
 
-            <div class="consignor-consignee">
-                <div class="consignor">
-                    <span class="label">Consignor:</span>
-                    <span class="value">${parcel.sender.name}</span>
-                    <span class="label">Ph: </span>
-                    <span class="value">${parcel.sender.phoneNo || "____"}</span>
+                    <table class="main-table ${auto == 1 ? 'auto-table' : 'normal-table'}">
+                        <thead>${tableHeaders}</thead>
+                        <tbody>
+                            ${allitems}
+                            ${totalRow}
+                        </tbody>
+                    </table>
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : parcel.doorDeliveryCharge : 'No'}</div>
+                        ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
+                    </div>
+                    <div class="meta">
+                        <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
+                        <span>Goods are at owner's risk</span>
+                        <span>GSTID: 36AAFFF2744R1ZX</span>
+                    </div>
                 </div>
-                <div class="consignee">
-                    <span class="label">Consignee:</span>
-                    <span class="value">${parcel.receiver.name}</span>
-                    <span class="label">Ph: </span>
-                    <span class="value">${parcel.receiver.phoneNo || "____"}</span>
-                </div>
-            </div>
-
-            <table class="main-table ${auto == 1 ? 'auto-table' : 'normal-table'}">
-                                <thead>
-                    ${tableHeaders}
-                                </thead>
-                                <tbody>
-                                    ${allitems}
-                    ${totalRow}
-                                </tbody>
-                            </table>
-            <div style="display: flex; justify-content: space-between;">
-                <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : parcel.doorDeliveryCharge : 'No'}</div>
-                ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
-            </div>
-            <div class="meta">
-                <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
-                <span>Goods are at owner's risk</span>
-                <span>GSTID: 36AAFFF2744R1ZX</span>
-                        </div>
             
-                    </div>
-        
-        <div class="footer">
-            <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
-            <div class="branches">FTC not responsible for Leakage & Breakage.</div>
+                <div class="footer">
+                    <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
+                    <div class="branches">FTC is not responsible for Leakage & Breakage.</div>
                 </div>
-            <div style="text-align: right; display: absolute;font-size: 6px">Created by: ${parcel.addedBy.name}</div>
+                <div style="text-align: right; display: absolute;font-size: 6px">Created by: ${parcel.addedBy.name}</div>
             </div>
     `;
 };
@@ -192,9 +188,10 @@ const generateLRSheet = (parcel, options = {}) => {
 
                 .lr-no{
                     position: absolute;
-                    right: 14px;
+                    right: 3.5mm;
+                    margin-top: -3.5mm;
                     font-weight: bold;
-                    font-size: 6px;
+                    font-size: 7px;
                 }
 
                 .header {
@@ -211,6 +208,7 @@ const generateLRSheet = (parcel, options = {}) => {
                 }
 
                 .logo-wrapper {
+                    margin-top:-1mm;
                     justify-self: start;
                     align-self: flex-start;
                     text-align: left;
@@ -222,9 +220,9 @@ const generateLRSheet = (parcel, options = {}) => {
                 }
 
                 .top-title {
-                    display: flex;
                     align-items: center;
                     justify-content: center;
+                    text-align: center;
                     width: 100%;
                 }
 
@@ -257,7 +255,8 @@ const generateLRSheet = (parcel, options = {}) => {
                     align-items: center;
                     position: relative;
                     text-align: center;
-                    font-size: 5px;
+                    font-size: 6px;
+                    margin-bottom: 2px;
                 }
                 .route-from, .route-to {
                     position: absolute;
@@ -283,7 +282,6 @@ const generateLRSheet = (parcel, options = {}) => {
                 }
                 .address {
                     font-size: 5px;
-                    margin-top: -1mm; /* pull address closer to company name */
                     margin-bottom: 2px;
                 }
                 .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
@@ -297,7 +295,7 @@ const generateLRSheet = (parcel, options = {}) => {
                 .consignor-consignee {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 5px;
+                    font-size: 6px;
                     margin: 0.5mm 0;
                 }
                 .consignor, .consignee {

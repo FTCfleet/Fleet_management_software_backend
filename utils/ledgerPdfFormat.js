@@ -65,24 +65,6 @@ const generateLedger = (ledger, driver, options = {}) => {
                 <div><strong>Delivery Station: </strong>${ledger.destinationWarehouse.name}</div>
             </div>` ;
 
-    let totalFreight = ledger.parcels.reduce(
-        (sum, parcel) => sum + parcel.freight,
-        0
-    )
-    let totalHamali = ledger.parcels.reduce(
-        (sum, parcel) => sum + safeNumber(parcel.hamali) + safeNumber(parcel.doorDeliveryCharge),
-        0
-    )
-    let totalItems = ledger.parcels.reduce(
-        (sum, parcel) =>
-            sum + parcel.items.reduce((qty, item) => qty + item.quantity, 0),
-        0
-    )
-
-    // Compute Paid and To Pay subtotals
-    const paidAmount = paidParcels.reduce((sum, p) => sum + (p.freight || 0) + safeNumber(p.hamali) + safeNumber(p.doorDeliveryCharge), 0);
-    const toPayAmount = toPayParcels.reduce((sum, p) => sum + (p.freight || 0) + safeNumber(p.hamali) + safeNumber(p.doorDeliveryCharge), 0);
-
     const paidItems = paidParcels.reduce((sum, p) => sum + p.items.reduce((q, it) => q + it.quantity, 0), 0);
     const toPayItems = toPayParcels.reduce((sum, p) => sum + p.items.reduce((q, it) => q + it.quantity, 0), 0);
 
@@ -141,7 +123,7 @@ const generateLedger = (ledger, driver, options = {}) => {
                 }
 
                 .logo {
-                    width: 68px;
+                    width: 115px;
                     height: auto;
                 }
 

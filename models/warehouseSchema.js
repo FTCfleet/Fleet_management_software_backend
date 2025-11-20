@@ -1,3 +1,4 @@
+const { timingSafeEqual } = require('crypto');
 const mongoose = require('mongoose');
 
 const warehouseSchema= new mongoose.Schema({
@@ -24,6 +25,10 @@ const warehouseSchema= new mongoose.Schema({
     order:{
         type: Number,
         required: true
+    },
+    sequence: {
+      type: Number,
+      default: 0
     }
 });
 

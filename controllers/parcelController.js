@@ -46,12 +46,27 @@ const buildRegularClientPayload = (details = {}) => {
     const address = sanitizedValue(details.address);
     const gst = sanitizedValue(details.gst);
 
-    if (!name || !phoneNo || !address || !gst) {
-        return null;
+    if (!name) {
+        return null;  
     }
 
-    return { name, phoneNo, address, gst };
+    const fields = { phoneNo, address, gst };
+
+    const validEntries = Object.values(fields).filter(v => v).length;
+
+    if (validEntries < 2) {
+        return null;   
+    }
+
+    for (const key in fields) {
+        if (!fields[key]) {
+            fields[key] = "NA";
+        }
+    }
+
+    return { name, ...fields };
 };
+
 
 const upsertRegularClientDirectory = async (details = {}, isSenderEntry = false) => {
     const payload = buildRegularClientPayload(details);
@@ -89,14 +104,38 @@ const createParcelPopulateConfig = (includeLastModified = false) => {
     return basePopulate;
 };
 
+async function getNextTrackingNumber(warehouseId) {
+  const warehouse = await Warehouse.findOneAndUpdate(
+    { _id: warehouseId },
+    [
+      {
+        $set: {
+          sequence: {
+            $cond: {
+              if: { $gte: ["$sequence", 100000] },
+              then: 1,
+              else: { $add: ["$sequence", 1] }
+            }
+          }
+        }
+      }
+    ],
+    { new: true }
+  );
+
+  return String(warehouse.sequence).padStart(6, '0');
+}
+
+
 module.exports.newParcel = async (req, res) => {
     try {
         let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, freight, hamali, charges, payment, isDoorDelivery, doorDeliveryCharge } = req.body;
         if (!sourceWarehouse) {
-            sourceWarehouse = req.user.warehouseCode;
+            // sourceWarehouse = req.user.warehouseCode;
+            sourceWarehouse = await Warehouse.findById(req.user.warehouseCode);
         }
         else {
-            sourceWarehouse = (await Warehouse.findOne({ warehouseID: sourceWarehouse }))._id;
+            sourceWarehouse = await Warehouse.findOne({ warehouseID: sourceWarehouse });
         }
 
         const destinationWarehouseId = await Warehouse.findOne({ warehouseID: destinationWarehouse });
@@ -161,12 +200,16 @@ module.exports.newParcel = async (req, res) => {
         const newSender = await sender.save();
         const newReceiver = await receiver.save();
 
-        const trackingId = generateUniqueId(12);
+        let startName = sourceWarehouse.warehouseID.split('-')[0].slice(0,3);
+        let startNum = sourceWarehouse.warehouseID.split('-')[1] ?? '';
+        const nextSerial = await getNextTrackingNumber(sourceWarehouse._id);
+        const trackingId = startName+startNum+'-'+ nextSerial;
+        
         const newParcel = new Parcel({
             items: itemEntries,
             sender: newSender._id,
             receiver: newReceiver._id,
-            sourceWarehouse,
+            sourceWarehouse: sourceWarehouse._id,
             destinationWarehouse: destinationWarehouseId._id,
             trackingId,
             payment,

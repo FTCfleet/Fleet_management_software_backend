@@ -177,6 +177,10 @@ module.exports.fetchAllWarehouses = async (req, res) => {
 //
 module.exports.addWarehouse = async (req, res) => {
     try {
+        let existingItem = await Warehouse.findOne({ warehouseID: warehouse.warehouseID });
+        if (existingItem) {
+            return res.status(201).json({ message: `Warehouse with ID: ${warehouse.warehouseID} already exists`, flag:false });
+        }
         const warehouse = new Warehouse({ ...req.body });
         warehouse.order= (await Warehouse.countDocuments()) + 1;
         await warehouse.save();
