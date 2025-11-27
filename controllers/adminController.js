@@ -117,7 +117,19 @@ module.exports.deleteDriver = async (req, res) => {
 //
 module.exports.updateEmployee = async (req, res) => {
     try {
-        const { username, updates } = req.body;
+        const { username, updates, isReset } = req.body;
+        
+        if (isReset) {
+            const employee = await Employee.findOne({ username });
+            
+            if (!employee) {
+                return res.status(404).json({ message: 'User not found', flag: false });
+            }
+    
+            employee.password = updates.password;
+            await employee.save();
+            return res.status(200).json({ message: 'Successfully updated employee', body: employee, flag: true });
+        }
 
         if(updates.warehouseCode){
             const warehouse= await Warehouse.findOne({warehouseID: updates.warehouseCode});
@@ -131,7 +143,7 @@ module.exports.updateEmployee = async (req, res) => {
         );
 
         if (!updatedEmployee) {
-            return res.status(201).json({ message: `No Employee found with username: ${username}`, flag:false });
+            return res.status(409).json({ message: `No Employee found with username: ${username}`, flag:false });
         }
 
         return res.status(200).json({ message: "Successfully updated employee", body: updatedEmployee , flag:true});
@@ -141,7 +153,34 @@ module.exports.updateEmployee = async (req, res) => {
     }
 }
 
-//
+//add employee
+module.exports.addEmployee = async (req, res) => {
+    try {
+        const { username, password, name, phoneNo, warehouseID, role } = req.body;
+        const warehouseCode = await Warehouse.findOne({warehouseID});
+        const existingEmployee = await Employee.findOne({ username });
+        if (existingEmployee) {
+            return res.status(409).json({ message: `Employee with username: ${username} already exists`, flag:false });
+        }
+
+        const employee = new Employee({ 
+            username, 
+            password, 
+            name, 
+            phoneNo, 
+            warehouseCode: warehouseCode._id,
+            role
+        });
+
+        await employee.save();
+        
+        // const token = jsonwebtoken.sign({ id: employee._id }, process.env.JWT_SECRET);
+        return res.status(201).json({ body: employee, flag:true});
+    } catch (error) {
+        return res.status(400).json({ message: error.message,flag:false });
+    }
+}
+
 module.exports.deleteEmployee = async (req, res) => {
     try {
         const { username } = req.body;
@@ -362,8 +401,6 @@ module.exports.getRegularItemDirectory = async (req, res) => {
 };
 
 
-
-
 module.exports.addNewRegularItems= async(req, res)=>{
     try{
         const { items }= req.body;
@@ -386,10 +423,10 @@ module.exports.addNewRegularItems= async(req, res)=>{
                 return res.status(402).json({ message: "Regular item name is required", flag: false });
             }
 
-            const baseName = extractRegularItemBaseName(rawName);
-            if (!baseName) {
-                return res.status(403).json({ message: "Regular item name cannot be empty", flag: false });
-            }
+            // const baseName = extractRegularItemBaseName(rawName);
+            // if (!baseName) {
+            //     return res.status(403).json({ message: "Regular item name cannot be empty", flag: false });
+            // }
             const typeName = normalizeItemTypeName(item.type);
             if (!typeName) {
                 return res.status(404).json({ message: "Regular item type name is required", flag: false });
@@ -405,7 +442,11 @@ module.exports.addNewRegularItems= async(req, res)=>{
                 typeCache.set(cacheKey, typeRecord);
             }
 
-            const finalName = buildRegularItemName(baseName, typeRecord.name);
+            const existing = await RegularItem.findOne({ name: rawName, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
+            if (existing) {
+                return res.status(409).json({ message: `Regular item "${rawName} ${typeName}" already exists`, flag: false });
+            }
+            // const finalName = buildRegularItemName(baseName, typeRecord.name);
             // const combinationKey = `${baseName.toLowerCase()}|${typeRecord._id.toString()}`;
             // if (combinationGuard.has(combinationKey)) {
             //     return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
@@ -413,20 +454,20 @@ module.exports.addNewRegularItems= async(req, res)=>{
             // combinationGuard.add(combinationKey);
 
             preparedItems.push({
-                name: finalName,
+                name: rawName,
                 itemType: typeRecord._id,
                 freight: item.freight,
                 hamali: item.hamali
             });
         }
 
-        const lookupNames = preparedItems.map(({ name }) => name);
-        if (lookupNames.length > 0) {
-            const conflicts = await RegularItem.find({ name: { $in: lookupNames } }).collation(ITEM_TYPE_COLLATION);
-            if (conflicts.length > 0) {
-                return res.status(406).json({ message: `Regular item "${conflicts[0].name}" already exists`, flag: false });
-            }
-        }
+        // const lookupNames = preparedItems.map(({ name }) => name);
+        // if (lookupNames.length > 0) {
+        //     const conflicts = await RegularItem.find({ name: { $in: lookupNames } }).collation(ITEM_TYPE_COLLATION);
+        //     if (conflicts.length > 0) {
+        //         return res.status(406).json({ message: `Regular item "${conflicts[0].name}" already exists`, flag: false });
+        //     }
+        // }
 
         const createdItems = await RegularItem.insertMany(preparedItems);
         await RegularItem.populate(createdItems, { path: 'itemType' });
@@ -450,10 +491,10 @@ module.exports.deleteRegularItem = async(req, res) => {
         }
 
         // Remove the item from all regular clients' items array
-        await RegularClient.updateMany(
-            { 'items.itemDetails': itemId },
-            { $pull: { items: { itemDetails: itemId } } }
-        );
+        // await RegularClient.updateMany(
+        //     { 'items.itemDetails': itemId },
+        //     { $pull: { items: { itemDetails: itemId } } }
+        // );
         
         await RegularItem.findByIdAndDelete(itemId);
         
@@ -551,93 +592,31 @@ module.exports.editRegularItems= async(req, res)=>{
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(401).json({ message: "No items provided for update", flag: false });
         }
-
-        const updatesToApply = [];
-        const combinationGuard = new Set();
-        const typeCache = new Map();
-
+        
         for (const item of items){
             if (!item || !item._id) {
                 return res.status(401).json({ message: "Item id is required for update", flag: false });
             }
-
-            const existingItem = await RegularItem.findById(item._id).populate('itemType');
+            const existingItem = await RegularItem.findById(item.id);
             if (!existingItem){
-                return res.status(404).json({ message: `No Regular Item found with ID: ${item._id}`, flag: false });
+                return res.status(404).json({ message: `No Regular Item found with ID: ${item.id}`, flag: false });
             }
-
-            let nextTypeRecord = existingItem.itemType;
-            if (Object.prototype.hasOwnProperty.call(item, 'type')) {
-                const typeName = normalizeItemTypeName(item.type);
-                if (!typeName) {
-                    return res.status(401).json({ message: "Regular item type name is required", flag: false });
+            // existingItem.name= item.name;
+            if (Object.prototype.hasOwnProperty.call(item, 'type')){
+                const itemType = await ItemType.findById(item.itemType);
+                if (!itemType){
+                    return res.status(404).json({ message: `No Item Type found with ID: ${item.itemType}`, flag: false });
                 }
-
-                const cacheKey = typeName.toLowerCase();
-                let cachedType = typeCache.get(cacheKey);
-                if (!cachedType) {
-                    cachedType = await ItemType.findOne({ name: typeName }).collation(ITEM_TYPE_COLLATION);
-                    if (!cachedType) {
-                        return res.status(401).json({ message: `Item type "${typeName}" does not exist`, flag: false });
-                    }
-                    typeCache.set(cacheKey, cachedType);
-                }
-                nextTypeRecord = cachedType;
+                existingItem.itemType= itemType._id;
             }
-
-            if (!nextTypeRecord) {
-                return res.status(401).json({ message: "Regular item type is required", flag: false });
-            }
-
-            let resolvedType = nextTypeRecord;
-            if (resolvedType && !resolvedType.name) {
-                resolvedType = await ItemType.findById(resolvedType);
-            }
-
-            if (!resolvedType || !resolvedType.name) {
-                return res.status(401).json({ message: "Regular item type is invalid", flag: false });
-            }
-
-            let baseName;
-            if (typeof item.name === 'string') {
-                const trimmedName = item.name.trim();
-                if (!trimmedName) {
-                    return res.status(401).json({ message: "Regular item name cannot be empty", flag: false });
-                }
-                baseName = extractRegularItemBaseName(trimmedName);
-            } else {
-                baseName = extractRegularItemBaseName(existingItem.name);
-            }
-
-            if (!baseName) {
-                return res.status(401).json({ message: "Regular item name cannot be empty", flag: false });
-            }
-
-            const finalName = buildRegularItemName(baseName, resolvedType.name);
-            const combinationKey = `${baseName.toLowerCase()}|${resolvedType._id.toString()}`;
-            if (combinationGuard.has(combinationKey)) {
-                return res.status(409).json({ message: "Duplicate regular item in request payload", flag: false });
-            }
-            combinationGuard.add(combinationKey);
-
-            const duplicate = await RegularItem.findOne({ _id: { $ne: existingItem._id }, name: finalName, itemType: resolvedType._id }).collation(ITEM_TYPE_COLLATION);
-            if (duplicate) {
-                return res.status(409).json({ message: `Regular item "${finalName}" already exists`, flag: false });
-            }
-
-            const setPayload = { name: finalName, itemType: resolvedType._id };
             if (Object.prototype.hasOwnProperty.call(item, 'freight')){
-                setPayload.freight = item.freight;
+                existingItem.freight = item.freight;
             }
             if (Object.prototype.hasOwnProperty.call(item, 'hamali')){
-                setPayload.hamali = item.hamali;
+                existingItem.hamali = item.hamali;
             }
 
-            updatesToApply.push({ id: existingItem._id, set: setPayload });
-        }
-
-        for (const { id, set } of updatesToApply){
-            await RegularItem.findByIdAndUpdate(id, { $set: set });
+            await existingItem.save();
         }
 
         return res.status(200).json({ message: "Successfully updated regular items", flag: true });

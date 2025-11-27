@@ -123,7 +123,7 @@ async function getNextTrackingNumber(warehouseId) {
     { new: true }
   );
 
-  return String(warehouse.sequence).padStart(6, '0');
+  return String(warehouse.sequence).padStart(5, '0');
 }
 
 
@@ -161,15 +161,15 @@ module.exports.newParcel = async (req, res) => {
                 continue;
             }
 
-            let finalItemName = rawItemName;
-            if (!finalItemName.endsWith(`(${typeRecord.name})`)) {
-                finalItemName = `${finalItemName} (${typeRecord.name})`;
-            }
+            // let finalItemName = rawItemName;
+            // if (!finalItemName.endsWith(`(${typeRecord.name})`)) {
+            //     finalItemName = `${finalItemName} (${typeRecord.name})`;
+            // }
 
-            const existingItem = await RegularItem.findOne({ name: finalItemName }).collation(ITEM_TYPE_COLLATION);
+            const existingItem = await RegularItem.findOne({ name: rawItemName, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
             if (!existingItem) {
                 const newItem = new RegularItem({
-                    name: finalItemName,
+                    name: rawItemName,
                     itemType: typeRecord._id,
                     freight: item.freight,
                     hamali: item.hamali,
@@ -178,7 +178,7 @@ module.exports.newParcel = async (req, res) => {
             }
 
             const newItem = new Item({
-                name: finalItemName,
+                name: rawItemName,
                 itemType: typeRecord._id,
                 quantity: item.quantity,
                 freight: item.freight,

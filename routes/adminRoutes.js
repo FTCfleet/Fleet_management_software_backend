@@ -19,6 +19,7 @@ router.route('/manage/driver')
     .delete(authenticateToken, isAdmin, catchAsync(adminController.deleteDriver));
 
 router.route('/manage/employee')
+    .post(authenticateToken, isAdmin, catchAsync(adminController.addEmployee))
     .put(authenticateToken, isAdmin, catchAsync(adminController.updateEmployee))
     .delete(authenticateToken, isAdmin, catchAsync(adminController.deleteEmployee));
 

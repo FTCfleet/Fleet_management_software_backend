@@ -18,55 +18,34 @@ const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
 const path = require('path');
-// const puppeteer = require('puppeteer');
-// let chromium;
-// if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-//   chromium = require('@sparticuz/chromium');
-// }
 
-/*
-module.exports.newLedger = async(req, res) => {
-    try {
-        const scannedIds = req.body.codes;
-        const parcels = [];
-        for (const id of scannedIds) {
-            let parcel = await Parcel.findOne({ trackingId: id });
-            if (parcel) parcels.push(parcel._id);
-        }
-
-        
-        const newLedger = new Ledger({
-            ledgerId: generateUniqueId(14),
-            vehicleNo: req.body.vehicleNo,
-            status: 'pending',
-            dispatchedAt: new Date(),
-            parcels,
-            scannedBySource: req.user._id,   
-            sourceWarehouse: req.user.warehouseCode,
-        });
-
-        await newLedger.save();
-        for (const id of scannedIds) {
-            let parcel = await Parcel.findOne({ trackingId: id });
-            if (parcel) {
-                parcel.ledgerId = newLedger._id;
-                parcel.status = 'dispatched';
+async function getNextTrackingNumber(warehouseId) {
+  const warehouse = await Warehouse.findOneAndUpdate(
+    { _id: warehouseId },
+    [
+      {
+        $set: {
+          memoSequence: {
+            $cond: {
+              if: { $gte: ["$memoSequence", 50000] },
+              then: 1,
+              else: { $add: ["$memoSequence", 1] }
             }
-            await parcel.save();
+          }
         }
-        
-        res.status(200).json({message: "Ledger created successfully", body: newLedger,flag:true});
-    } catch (err) {
-        res.status(500).json({ message: "Failed to create new ledger", error: err.message ,flag:false});
-    }
-};
-*/
+      }
+    ],
+    { new: true }
+  );
+
+  return String(warehouse.memoSequence).padStart(5, '0');
+}
 
 module.exports.createLedger = async (req, res) => {
     try {
         const data= req.body; //ids(parcel), vehicleNo, srcWH, destWH, lorryFreight, verifiedBySource, status
         const parcels = [];
-        console.log(data.ids);
+        
         for (const id of data.ids) {
             let parcel = await Parcel.findOne({ trackingId: id });
             if (parcel) parcels.push(parcel._id);
@@ -81,8 +60,13 @@ module.exports.createLedger = async (req, res) => {
 
         let dest= await Warehouse.findOne({ warehouseID: data.destinationWarehouse });
 
+        let startName = dest.warehouseID.split('-')[0].slice(0,3);
+        let startNum = dest.warehouseID.split('-')[1] ?? '';
+        const nextSerial = await getNextTrackingNumber(dest._id);
+        const ledgerId = startName+startNum+'-'+ nextSerial;
+
         const newLedger = new Ledger({
-            ledgerId: generateUniqueId(14),
+            ledgerId,
             vehicleNo: data.vehicleNo,
             status: 'dispatched',
             dispatchedAt: getNow(),

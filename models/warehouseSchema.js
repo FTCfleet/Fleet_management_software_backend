@@ -29,6 +29,10 @@ const warehouseSchema= new mongoose.Schema({
     sequence: {
       type: Number,
       default: 0
+    },
+    memoSequence: {
+      type: Number,
+      default: 0
     }
 });
 

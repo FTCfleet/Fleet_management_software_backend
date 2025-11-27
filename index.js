@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 8000;
 
 const ExpressError = require('./utils/expressError.js');
 const Warehouse = require('./models/warehouseSchema.js');
+const RegularItem = require("./models/regularItemSchema.js");
 
 const authRoutes = require("./routes/authRoutes.js");
 const adminRoutes = require("./routes/adminRoutes.js");
@@ -46,15 +47,50 @@ app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
 
-// app.use('/fix', async (req, res) => {
-//     const warehouses = await Warehouse.find({});
+app.use('/fix', async (req, res) => {
+    const warehouses = await Warehouse.find({});
 
-//     for (const wh of warehouses) {
-//       wh.sequence = 0; // default starting value
-//       await wh.save();
-//     }
-//     return res.send("Fixed");
-// });
+    for (const wh of warehouses) {
+    //   wh.sequence = 0; // default starting value
+      wh.memoSequence = 0; // default starting value
+      await wh.save();
+    }
+    return res.send("Fixed");
+});
+
+app.use('/fix-regular', async (req, res) => {
+    const items = await RegularItem.find().populate("itemType");
+
+        console.log(`Found ${items.length} items`);
+
+        for (const item of items) {
+            if (!item.itemType || !item.itemType.name) {
+                console.log(`Skipping: Missing itemType for ${item._id}`);
+                continue;
+            }
+
+            const itemTypeName = item.itemType.name;
+            const original = item.name;
+            
+            // If already correct → skip
+            if (!original.includes(` (${itemTypeName})`)) {
+                console.log(`Already fixed: ${original}`);
+                continue;
+            }
+
+            // Remove " (itemTypeName)"
+            const fixedName = original.replace(` (${itemTypeName})`, "");
+
+            if (fixedName !== original) {
+                item.name = fixedName;
+                await item.save();
+                console.log(`Updated: "${original}" → "${fixedName}"`);
+            }
+        }
+
+        console.log("🎉 Name cleanup completed.");
+        return res.send("Done");
+    });
 
 
 app.all('*', (req, res, next) => {
