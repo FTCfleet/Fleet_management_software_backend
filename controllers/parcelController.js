@@ -525,11 +525,15 @@ module.exports.editParcel = async (req, res) => {
                     typeCache.set(cacheKey, typeRecord);
                 }
 
-                if (item.name.endsWith(`(${typeRecord.name})`)) {
-                    item.name = item.name;
-                }
-                else{
-                    item.name = `${item.name} (${typeRecord.name})`;
+                const existingItem = await RegularItem.findOne({ name: item.name, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
+                if (!existingItem) {
+                    const newItem = new RegularItem({
+                        name: item.name,
+                        itemType: typeRecord._id,
+                        freight: item.freight,
+                        hamali: item.hamali,
+                    });
+                    await newItem.save();
                 }
 
                 const newItem = new Item({

@@ -37,7 +37,7 @@ async function getNextTrackingNumber(warehouseId) {
     ],
     { new: true }
   );
-
+  console.log(warehouse);
   return String(warehouse.memoSequence).padStart(5, '0');
 }
 
@@ -61,9 +61,8 @@ module.exports.createLedger = async (req, res) => {
         let dest= await Warehouse.findOne({ warehouseID: data.destinationWarehouse });
 
         let startName = dest.warehouseID.split('-')[0].slice(0,3);
-        let startNum = dest.warehouseID.split('-')[1] ?? '';
         const nextSerial = await getNextTrackingNumber(dest._id);
-        const ledgerId = startName+startNum+'-'+ nextSerial;
+        const ledgerId = startName+'-'+ nextSerial;
 
         const newLedger = new Ledger({
             ledgerId,

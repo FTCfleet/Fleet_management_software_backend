@@ -118,17 +118,16 @@ module.exports.deleteDriver = async (req, res) => {
 module.exports.updateEmployee = async (req, res) => {
     try {
         const { username, updates, isReset } = req.body;
-        
         if (isReset) {
             const employee = await Employee.findOne({ username });
             
             if (!employee) {
-                return res.status(404).json({ message: 'User not found', flag: false });
+                return res.status(404).json({ message: `User ${username} not found`, flag: false });
             }
     
             employee.password = updates.password;
             await employee.save();
-            return res.status(200).json({ message: 'Successfully updated employee', body: employee, flag: true });
+            return res.status(200).json({ message: 'Successfully updated employee', body: username, flag: true });
         }
 
         if(updates.warehouseCode){
@@ -146,7 +145,7 @@ module.exports.updateEmployee = async (req, res) => {
             return res.status(409).json({ message: `No Employee found with username: ${username}`, flag:false });
         }
 
-        return res.status(200).json({ message: "Successfully updated employee", body: updatedEmployee , flag:true});
+        return res.status(200).json({ message: "Successfully updated employee", body: username , flag:true});
 
     } catch (err) {
         return res.status(500).json({ message: "Failed to update employee", error: err.message , flag:false});
@@ -158,9 +157,12 @@ module.exports.addEmployee = async (req, res) => {
     try {
         const { username, password, name, phoneNo, warehouseID, role } = req.body;
         const warehouseCode = await Warehouse.findOne({warehouseID});
+        if (!warehouseCode) {
+            return res.status(400).json({ message: `Warehouse with ID: ${warehouseID} does not exist`, flag: false });
+        }
         const existingEmployee = await Employee.findOne({ username });
         if (existingEmployee) {
-            return res.status(409).json({ message: `Employee with username: ${username} already exists`, flag:false });
+            return res.status(409).json({ message: `Employee with username: ${username} already exists`, flag: false });
         }
 
         const employee = new Employee({ 
@@ -597,11 +599,11 @@ module.exports.editRegularItems= async(req, res)=>{
             if (!item || !item._id) {
                 return res.status(401).json({ message: "Item id is required for update", flag: false });
             }
-            const existingItem = await RegularItem.findById(item.id);
+            const existingItem = await RegularItem.findById(item._id);
             if (!existingItem){
-                return res.status(404).json({ message: `No Regular Item found with ID: ${item.id}`, flag: false });
+                return res.status(404).json({ message: `No Regular Item found with ID: ${item.name} ${item.itemType}`, flag: false });
             }
-            // existingItem.name= item.name;
+            existingItem.name = item.name;
             if (Object.prototype.hasOwnProperty.call(item, 'type')){
                 const itemType = await ItemType.findById(item.itemType);
                 if (!itemType){
