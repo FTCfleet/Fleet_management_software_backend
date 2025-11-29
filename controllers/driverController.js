@@ -4,7 +4,7 @@ const Employee= require("../models/employeeSchema.js");
 
 module.exports.allTruckNo = async (req, res) => {
     try {
-        const allTruckNo = await Driver.find({}, 'vehicleNo');
+        const allTruckNo = await Driver.find();
         if (allTruckNo) {
             return res.status(200).json({ message: "Successfull", body: allTruckNo , flag: true});
         } else {

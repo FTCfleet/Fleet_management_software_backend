@@ -43,9 +43,8 @@ async function getNextTrackingNumber(warehouseId) {
 
 module.exports.createLedger = async (req, res) => {
     try {
-        const data= req.body; //ids(parcel), vehicleNo, srcWH, destWH, lorryFreight, verifiedBySource, status
+        const data= req.body; //ids(parcel), truck, srcWH, destWH, lorryFreight, verifiedBySource, status
         const parcels = [];
-        
         for (const id of data.ids) {
             let parcel = await Parcel.findOne({ trackingId: id });
             if (parcel) parcels.push(parcel._id);
@@ -64,9 +63,23 @@ module.exports.createLedger = async (req, res) => {
         const nextSerial = await getNextTrackingNumber(dest._id);
         const ledgerId = startName+'-'+ nextSerial;
 
+        const existingDriver = await Driver.findOne({ vehicleNo: data.vehicleNo.replaceAll(' ', '') });
+        if (!existingDriver) {
+            if (data.driverName && data.driverName.trim() && data.driverPhone && data.driverPhone.trim()) {
+                const driver = new Driver({
+                    vehicleNo: data.vehicleNo,
+                    name: data.driverName.trim(),
+                    phoneNo: data.driverPhone.trim()
+                });
+                await driver.save();
+            }
+        }
+
         const newLedger = new Ledger({
             ledgerId,
             vehicleNo: data.vehicleNo,
+            driverName: data.driverName || 'N/A',
+            driverPhone: data.driverPhone || 'N/A',
             status: 'dispatched',
             dispatchedAt: getNow(),
             parcels,
@@ -122,7 +135,12 @@ module.exports.generatePDF = async (req, res) => {
         if (!ledger) {
             return res.status(404).json({ message: `Can't find any Ledger with ID ${id}`, flag: false });
         }
-        const driver = await Driver.findOne({vehicleNo: ledger.vehicleNo}); 
+        // const driver = await Driver.findOne({vehicleNo: ledger.vehicleNo}); 
+        const driver = {
+            name: ledger.driverName || 'N/A',
+            phoneNo: ledger.driverPhone || 'N/A',
+            vehicleNo: ledger.vehicleNo
+        };
 
         console.log('Launching Puppeteer...');
         let launchOptions = {
@@ -472,6 +490,7 @@ module.exports.editLedger = async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body; 
+
         /* updateData- 
             status('pending', 'dispatched', 'completed')
             vehicleNo(string)

@@ -67,6 +67,10 @@ module.exports.fetchAllDrivers = async (req, res) => {
 //
 module.exports.addDriver = async (req, res) => {
     try {
+        const existingDriver = await Driver.findOne({ vehicleNo: req.body.vehicleNo.replaceAll(' ', '') });
+        if (existingDriver) {
+            return res.status(409).json({ message: "Driver with this vehicle number already exists", flag: false });
+        }
         const newDriver = new Driver({ ...req.body });
         await newDriver.save();
         return res.status(200).json({ message: "Successfully created a driver", body: newDriver ,flag:true});

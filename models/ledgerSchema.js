@@ -15,6 +15,14 @@ const ledgerSchema = new mongoose.Schema({
         index: true
     },
 
+    driverName: {
+        type: String,
+    },
+
+    driverPhone: {
+        type: String,
+    },
+
     lorryFreight: {
         type: Number,
         required: true,
