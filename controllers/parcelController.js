@@ -473,7 +473,11 @@ module.exports.generateLR = async (req, res) => {
 
         console.log('Sending PDF response...');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="FTC LR RECEIPT ${id}.pdf"`); 
+        // res.setHeader('Content-Disposition', `attachment; filename="FTC LR RECEIPT ${id}.pdf"`); 
+        res.setHeader('Content-Disposition', `inline; filename="FTC LR RECEIPT ${id}.pdf"`); 
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
         res.setHeader('Content-Length', pdfBuffer.length);
         res.end(pdfBuffer);
 

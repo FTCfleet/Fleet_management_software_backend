@@ -17,10 +17,12 @@ const ledgerSchema = new mongoose.Schema({
 
     driverName: {
         type: String,
+        default: 'N/A'
     },
-
+    
     driverPhone: {
         type: String,
+        default: 'N/A'
     },
 
     lorryFreight: {
