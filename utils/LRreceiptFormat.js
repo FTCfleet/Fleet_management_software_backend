@@ -8,7 +8,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             return `
             <tr>
                 <td>${index++}</td>
-                <td>${item.name}</td>  
+                <td>${item.name} (${item.itemType.name})</td>  
                 <td>${item.quantity}</td>
             </tr>
             `;
@@ -16,11 +16,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             return `
             <tr>
                 <td>${index++}</td>
-                <td>${item.name}</td>  
+                <td>${item.name}  (${item.itemType.name})</td>  
                 <td>${item.quantity}</td>
-                <td>${`₹${item.freight}`}</td>
-                <td>${`₹${item.hamali}`}</td>
-                <td>${`₹${item.statisticalCharges}`}</td>
+                <td>${`₹${item.freight + item.hamali + item.statisticalCharges}`}</td>
             </tr>
             `;
         }
@@ -55,18 +53,14 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                 <th>S.No.</th>
                 <th>Item</th>
                 <th>Qty</th>
-                <th>Freight</th>
-                <th>Hamali</th>
-                <th>Statical</th>
+                <th>Amount</th>
             </tr>
         `;
         totalRow = `
             <tr class="total-row">
                 <td colspan="2">Total</td>
                 <td>${totalItems}</td>
-                <td>${`₹${totalFreight}`}</td>
-                <td>${`₹${totalHamali}`}</td>
-                <td>${`₹${totalCharges}`}</td>
+                <td>₹${totalFreight + totalHamali + totalCharges}</td>
             </tr>
             `;
     }
@@ -128,7 +122,6 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                         ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
                     </div>
                     <div class="meta">
-                        <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
                         <span>Goods are at owner's risk</span>
                         <span>GSTID: 36AAFFF2744R1ZX</span>
                     </div>
@@ -151,15 +144,19 @@ const generateLRSheet = (parcel, options = {}) => {
             <title>FTC LR Receipt</title>
             <style>
                 @page {
-                    size: 4in 6in;
+                    size: A4;
                     margin: 0;
                 }
-                body { width: 4in; height: 6in; margin: 0; padding: 1.5mm; font-family: Arial, sans-serif; font-size: 6px; }
+                body { width: 210mm; height: 297mm; margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 6px; }
                 .sheet {
-                    width: 100%;
-                    height: 100%;
+                    width: 4in;
+                    height: 6in;
+                    transform: scale(1.9); /* Scale 152.4mm to ~294mm to fit in 297mm */
+                    transform-origin: top left;
+                    margin-left: 7mm; /* Center horizontally: (210 - (101.6 * 1.93)) / 2  ≈ 7mm */
                     display: flex;
                     flex-direction: column;
+                    padding: 1.5mm;
                 }
                 .lr-receipt {
                     width: 100%;
@@ -295,7 +292,7 @@ const generateLRSheet = (parcel, options = {}) => {
                 .consignor-consignee {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 6px;
+                    font-size: 8px;
                     margin: 0.5mm 0;
                 }
                 .consignor, .consignee {
