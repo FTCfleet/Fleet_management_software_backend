@@ -352,7 +352,7 @@ const generateLRSheet = (parcel, options = {}) => {
             <div class="sheet">
                 ${generateLR(parcel, 0, options)}
                 ${generateLR(parcel, 0, options)}
-                ${generateLR(parcel, 1, options)}
+                ${generateLR(parcel, parcel.payment === "To Pay", options)}
             </div>
         </body>
         </html>
