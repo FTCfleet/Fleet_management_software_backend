@@ -18,7 +18,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                 <td>${index++}</td>
                 <td>${item.name}  (${item.itemType.name})</td>  
                 <td>${item.quantity}</td>
-                <td>${`₹${item.freight + item.hamali + item.statisticalCharges}`}</td>
+                <td>${`₹${item.freight + item.hamali + item.hamali}`}</td>
             </tr>
             `;
         }
@@ -26,9 +26,8 @@ const generateLR = (parcel, auto = 0, options = {}) => {
 
     let totalFreight = parcel.freight;
     let totalHamali = parcel.hamali;
-    let totalCharges = parcel.charges;
     let totalItems = parcel.items.reduce((sum, item) => sum + item.quantity, 0);
-    let totalAmount = totalFreight + totalHamali + totalCharges;
+    let totalAmount = totalFreight + 2*totalHamali;
 
     let tableHeaders = '';
     let totalRow = '';
@@ -60,7 +59,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <tr class="total-row">
                 <td colspan="2">Total</td>
                 <td>${totalItems}</td>
-                <td>₹${totalFreight + totalHamali + totalCharges}</td>
+                <td>₹${totalFreight + 2*totalHamali}</td>
             </tr>
             `;
     }

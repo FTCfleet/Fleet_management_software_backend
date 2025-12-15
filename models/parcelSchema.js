@@ -49,12 +49,6 @@ const parcelSchema = new mongoose.Schema({
         required: true
     },
 
-    charges: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-
     hamali: {
         type: Number,
         required: true,

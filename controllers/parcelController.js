@@ -1,21 +1,17 @@
 const Parcel = require("../models/parcelSchema.js");
+const Ledger = require("../models/ledgerSchema.js");
 const Client = require("../models/clientSchema.js");
 const RegularClient = require("../models/regularClientSchema.js");
 const RegularItem = require("../models/regularItemSchema.js");
 const Item = require("../models/itemSchema.js");
-const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const Warehouse = require("../models/warehouseSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
-// const puppeteer = require('puppeteer');
-const {formatToIST, getNow} = require("../utils/dateFormatter.js");
+const {getNow} = require("../utils/dateFormatter.js");
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
-// if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-// }
 const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
-const Employee = require("../models/employeeSchema.js");
 const fs = require('fs');
 const path = require('path');
 
@@ -126,10 +122,87 @@ async function getNextTrackingNumber(warehouseId) {
   return String(warehouse.sequence).padStart(5, '0');
 }
 
+async function removeOlderSequenceParcel(trackingId) {
+    const session = await Parcel.startSession();
+    session.startTransaction();
+
+    try {
+        // 1️⃣ Find parcel with minimal fields needed and delete it atomically
+        const parcel = await Parcel.findOneAndDelete(
+            { trackingId },
+            { session, projection: "items sender receiver ledgerId" }
+        );
+
+        if (!parcel) {
+            await session.commitTransaction();
+            session.endSession();
+            console.log("No parcel found with this trackingId.");
+            return null;
+        }
+
+        // Gather related IDs
+        const itemIds = parcel.items || [];
+        const clientIds = [...new Set(
+            [parcel.sender, parcel.receiver].filter(Boolean)
+        )];
+
+        // 2️⃣ Bulk delete related Items (only if any exist)
+        if (itemIds.length > 0) {
+            await Item.deleteMany(
+            { _id: { $in: itemIds } },
+            { session }
+            );
+        }
+
+        // 3️⃣ Bulk delete Clients (Sender & Receiver)
+        if (clientIds.length > 0) {
+            await Client.deleteMany(
+            { _id: { $in: clientIds } },
+            { session }
+            );
+        }
+
+        // 4️⃣ Check the ledger
+        const ledger = await Ledger.findById(parcel.ledgerId)
+            .select("parcels")
+            .session(session);
+
+        if (ledger) {
+            if (ledger.parcels.length === 1) {
+            // last parcel → delete whole ledger
+            await Ledger.deleteOne({ _id: ledger._id }, { session });
+
+            console.log("Parcel deleted + Ledger deleted (was last parcel)");
+            } else {
+            // remove only this parcel from ledger array
+            await Ledger.updateOne(
+                { _id: ledger._id },
+                { $pull: { parcels: parcel._id } },
+                { session }
+            );
+
+            console.log("Parcel deleted + Ledger updated");
+            }
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return parcel; // returning deleted parcel info if needed
+
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Cascade delete failed:", err);
+        throw err;
+    }
+
+}
+
 
 module.exports.newParcel = async (req, res) => {
     try {
-        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, freight, hamali, charges, payment, isDoorDelivery, doorDeliveryCharge } = req.body;
+        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, payment, isDoorDelivery, doorDeliveryCharge } = req.body;
         if (!sourceWarehouse) {
             // sourceWarehouse = req.user.warehouseCode;
             sourceWarehouse = await Warehouse.findById(req.user.warehouseCode);
@@ -139,8 +212,18 @@ module.exports.newParcel = async (req, res) => {
         }
 
         const destinationWarehouseId = await Warehouse.findOne({ warehouseID: destinationWarehouse });
+
+        let startName = sourceWarehouse.warehouseID.split('-')[0].slice(0,3);
+        let startNum = sourceWarehouse.warehouseID.split('-')[1] ?? '';
+        const nextSerial = await getNextTrackingNumber(sourceWarehouse._id);
+        const trackingId = startName + startNum + '-' + nextSerial;
+
+        // removeOlderSequenceParcel(trackingId);
+
         const itemEntries = [];
         const typeCache = new Map();
+        let totalFreight = 0;
+        let totalHamali = 0;
         for (const item of items) {
             const typeName = normalizeItemTypeName(item.type);
             if (!typeName) {
@@ -161,11 +244,6 @@ module.exports.newParcel = async (req, res) => {
                 continue;
             }
 
-            // let finalItemName = rawItemName;
-            // if (!finalItemName.endsWith(`(${typeRecord.name})`)) {
-            //     finalItemName = `${finalItemName} (${typeRecord.name})`;
-            // }
-
             const existingItem = await RegularItem.findOne({ name: rawItemName, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
             if (!existingItem) {
                 const newItem = new RegularItem({
@@ -183,10 +261,11 @@ module.exports.newParcel = async (req, res) => {
                 quantity: item.quantity,
                 freight: item.freight,
                 hamali: item.hamali,
-                statisticalCharges: item.hamali
             });
             const savedItem = await newItem.save();
             itemEntries.push(savedItem._id);
+            totalFreight += Number(item.freight*item.quantity || 0);
+            totalHamali += Number(item.hamali*item.quantity || 0);
         }
 
         await Promise.all([
@@ -199,11 +278,6 @@ module.exports.newParcel = async (req, res) => {
 
         const newSender = await sender.save();
         const newReceiver = await receiver.save();
-
-        let startName = sourceWarehouse.warehouseID.split('-')[0].slice(0,3);
-        let startNum = sourceWarehouse.warehouseID.split('-')[1] ?? '';
-        const nextSerial = await getNextTrackingNumber(sourceWarehouse._id);
-        const trackingId = startName+startNum+'-'+ nextSerial;
         
         const newParcel = new Parcel({
             items: itemEntries,
@@ -215,9 +289,8 @@ module.exports.newParcel = async (req, res) => {
             payment,
             isDoorDelivery,
             status: 'arrived', 
-            freight,
-            hamali, 
-            charges,
+            freight: totalFreight,
+            hamali: totalHamali, 
             placedAt: getNow(),
             lastModifiedAt: getNow(),
             addedBy: req.user._id,
@@ -413,7 +486,6 @@ module.exports.generateLR = async (req, res) => {
     try {
         const { id } = req.params;
         const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
-
         if (!parcel) {
             return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
         }
@@ -545,7 +617,6 @@ module.exports.editParcel = async (req, res) => {
                     itemType: typeRecord._id,
                     hamali: item.hamali,
                     freight: item.freight,
-                    statisticalCharges: item.hamali,
                     quantity: item.quantity,
                 });
                 await newItem.save();
@@ -597,15 +668,11 @@ module.exports.editParcel = async (req, res) => {
             }
         }
 
-        if (updateData.charges) {
-            parcel.charges = updateData.charges;
-        }
-        if (updateData.hamali) {
-            parcel.hamali = updateData.hamali;
-        }
-        if (updateData.freight) {
-            parcel.freight = updateData.freight;
-        }
+        // Recalculate freight and hamali from all items
+        const allItems = await Item.find({ _id: { $in: parcel.items } });
+        parcel.freight = allItems.reduce((acc, item) => acc + (item.freight*item.quantity || 0), 0);
+        parcel.hamali = allItems.reduce((acc, item) => acc + (item.hamali*item.quantity || 0), 0);
+
         if( updateData.payment) {
             parcel.payment = updateData.payment;
         }

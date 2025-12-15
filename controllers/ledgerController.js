@@ -1,19 +1,13 @@
-// const puppeteer = require('puppeteer');
 const Ledger = require("../models/ledgerSchema.js");
 const Item = require("../models/itemSchema.js");
-const generateUniqueId = require("../utils/uniqueIdGenerator.js");
 const generateLedger = require("../utils/ledgerPdfFormat.js");
-const generateLedgerReport = require("../utils/ledgerReportFormat.js");
-const {formatToIST, getNow} = require("../utils/dateFormatter.js");
+const {getNow} = require("../utils/dateFormatter.js");
 const ExcelJS = require('exceljs');
-const JSZip = require('jszip');
 const Employee= require("../models/employeeSchema.js");
 const Warehouse= require("../models/warehouseSchema.js");
 const Driver = require("../models/driverSchema.js");
 const Parcel= require("../models/parcelSchema.js");
-const qrCodeGenerator= require("../utils/qrCodeGenerator.js");
 const {sendDeliveryMessage}= require("../utils/whatsappMessageSender.js");
-// const { Cluster } = require('puppeteer-cluster');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
@@ -41,6 +35,68 @@ async function getNextTrackingNumber(warehouseId) {
   return String(warehouse.memoSequence).padStart(5, '0');
 }
 
+async function removeOlderSequenceMemo(ledgerId) {
+    const session = await Ledger.startSession();
+    session.startTransaction();
+
+    try {
+        // 1️⃣ Delete Ledger and get the full document back
+        const existingLedger = await Ledger.findOneAndDelete(
+            { ledgerId },
+            { session }
+        );
+
+        if (!existingLedger) {
+            await session.commitTransaction();
+            session.endSession();
+            console.log("No ledger found with that ledgerId.");
+            return null;
+        }
+
+        const parcelIds = existingLedger.parcels;
+
+        if (parcelIds.length > 0) {
+            // 2️⃣ Get parcels before deleting so we can extract linked fields
+            const parcels = await Parcel.find({ _id: { $in: parcelIds } })
+            .select("items sender receiver")
+            .session(session);
+
+            // Extract IDs in bulk for efficient deletion
+            const itemIds = parcels.flatMap(p => p.items || []);
+            const senderIds = parcels.map(p => p.sender).filter(Boolean);
+            const receiverIds = parcels.map(p => p.receiver).filter(Boolean);
+
+            // 3️⃣ Delete related Items
+            if (itemIds.length > 0) {
+            await Item.deleteMany({ _id: { $in: itemIds } }, { session });
+            }
+
+            // 4️⃣ Delete related Clients (sender + receiver)
+            const clientIds = [...new Set([...senderIds, ...receiverIds])]; // dedupe for performance
+            if (clientIds.length > 0) {
+            await Client.deleteMany({ _id: { $in: clientIds } }, { session });
+            }
+
+            // 5️⃣ Delete parcels last
+            await Parcel.deleteMany({ _id: { $in: parcelIds } }, { session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+        console.log("Ledger + Parcels + Items + Clients deleted successfully");
+
+        return existingLedger;
+
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("Error in cascading delete:", err);
+        throw err;
+    }
+
+}
+
+
 module.exports.createLedger = async (req, res) => {
     try {
         const data= req.body; //ids(parcel), truck, srcWH, destWH, lorryFreight, verifiedBySource, status
@@ -63,6 +119,8 @@ module.exports.createLedger = async (req, res) => {
         const nextSerial = await getNextTrackingNumber(dest._id);
         const ledgerId = startName+'-'+ nextSerial;
 
+        // removeOlderSequenceMemo(ledgerId);
+
         const existingDriver = await Driver.findOne({ vehicleNo: data.vehicleNo.replaceAll(' ', '') });
         if (!existingDriver) {
             if (data.driverName && data.driverName.trim() && data.driverPhone && data.driverPhone.trim()) {
@@ -74,7 +132,7 @@ module.exports.createLedger = async (req, res) => {
                 await driver.save();
             }
         }
-
+        
         const newLedger = new Ledger({
             ledgerId,
             vehicleNo: data.vehicleNo,

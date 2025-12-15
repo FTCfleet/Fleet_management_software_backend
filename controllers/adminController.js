@@ -495,12 +495,6 @@ module.exports.deleteRegularItem = async(req, res) => {
         if (!item) {
             return res.status(404).json({ message: `No Regular Item found with ID: ${itemId}`, flag: false });
         }
-
-        // Remove the item from all regular clients' items array
-        // await RegularClient.updateMany(
-        //     { 'items.itemDetails': itemId },
-        //     { $pull: { items: { itemDetails: itemId } } }
-        // );
         
         await RegularItem.findByIdAndDelete(itemId);
         
@@ -660,8 +654,7 @@ module.exports.getAllRegularClients= async(req, res)=>{
             RegularClient.find(filters)
                 .sort({ name: 1 })
                 .skip(skip)
-                .limit(PAGE_SIZE)
-                .select('-items'),
+                .limit(PAGE_SIZE),
             RegularClient.countDocuments(filters)
         ]);
 
@@ -699,7 +692,7 @@ module.exports.getRegularClientDirectory = async (req, res) => {
 
 module.exports.addNewRegularClient= async(req, res)=>{
     try{
-        const {name, phoneNo, address="NA", gst, items= [], isSender = false}= req.body;
+        const {name, phoneNo, address="NA", gst, isSender = false}= req.body;
         const trimmedName = typeof name === 'string' ? name.trim() : '';
         if (!trimmedName) {
             return res.status(401).json({ message: "Client name is required", flag: false });
@@ -712,7 +705,7 @@ module.exports.addNewRegularClient= async(req, res)=>{
             return res.status(409).json({ message: "Regular client already exists for the selected type", flag: false });
         }
 
-        const client= new RegularClient({name: trimmedName, phoneNo, address, gst, items, isSender: normalizedIsSender});
+        const client= new RegularClient({name: trimmedName, phoneNo, address, gst, isSender: normalizedIsSender});
         
         await client.save();
     
@@ -774,37 +767,5 @@ module.exports.deleteRegularClient= async(req, res)=>{
         return res.status(200).json({message: "Successfully deleted a regular client", flag:true});
     }catch(err){
         return res.status(500).json({ message: "Failed to delete a regular client", error: err.message, flag: false});
-    }
-}
-
-module.exports.getItemForRegularClient= async(req, res)=>{
-    try{
-        const {id}= req.params;
-
-        const client= await RegularClient.findById(id).populate({
-            path: 'items.itemDetails',
-            populate: { path: 'itemType' }
-        });
-
-        if(!client){
-            return res.status(404).json({message: "No client found with given Id", flag: false});
-        }
-        return res.status(200).json({ message: "Successfully fetched items for regular client", flag: true, body: client.items });
-
-    }catch(err){
-        return res.status(500).json({message: "Failed to fetch items for regular client", error: err.message, flag: false});
-    }
-}
-
-module.exports.delReg= async(req, res)=>{
-    try{
-        const all= await RegularClient.find();
-        for(let client of all){
-            client.items= [];
-            client.save();
-        }
-        return res.status(200).json({ message: "Successfully deleted all regular clients' items", body: all, flag: true });
-    }catch(err){
-        return res.status(500).json({ message: "Failed to delete regular client", error: err.message, flag: false });
     }
 }
