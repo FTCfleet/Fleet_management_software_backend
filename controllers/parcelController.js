@@ -46,21 +46,17 @@ const buildRegularClientPayload = (details = {}) => {
         return null;  
     }
 
-    const fields = { phoneNo, address, gst };
-
-    const validEntries = Object.values(fields).filter(v => v).length;
-
-    if (validEntries < 2) {
-        return null;   
+    // Ensure at least one of phoneNo or gst is present
+    if (!phoneNo && !gst) {
+        return null;
     }
 
-    for (const key in fields) {
-        if (!fields[key]) {
-            fields[key] = "NA";
-        }
-    }
-
-    return { name, ...fields };
+    return { 
+        name, 
+        phoneNo: phoneNo || "NA", 
+        address: address || "NA", 
+        gst: gst?.toUpperCase() || "NA" 
+    };
 };
 
 
@@ -70,10 +66,13 @@ const upsertRegularClientDirectory = async (details = {}, isSenderEntry = false)
         return null;
     }
 
-    const existingClient = await RegularClient.findOne({ name: payload.name }).collation(ITEM_TYPE_COLLATION);
+    const queryConditions = [{ name: payload.name }];
+    if (payload.phoneNo !== "NA") queryConditions.push({ phoneNo: payload.phoneNo });
+    if (payload.gst !== "NA") queryConditions.push({ gst: payload.gst });
+
+    const existingClient = await RegularClient.findOne({ $or: queryConditions }).collation(ITEM_TYPE_COLLATION);
 
     if (!existingClient) {
-        
         const newClient = new RegularClient({
             ...payload,
             isSender: Boolean(isSenderEntry)
