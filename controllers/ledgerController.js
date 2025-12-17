@@ -433,8 +433,7 @@ module.exports.generateExcel = async (req, res) => {
         })
             .populate('sourceWarehouse destinationWarehouse')
             .populate({
-                path: 'parcels',
-                select: 'freight payment hamali'
+                path: 'parcels'
             });
 
         // Group ledgers by source warehouse
@@ -444,7 +443,7 @@ module.exports.generateExcel = async (req, res) => {
         sourceWarehouses.forEach(wh => grouped[wh.warehouseID] = []);
         for (const ledger of ledgers) {
             const src = ledger.sourceWarehouse?.warehouseID || 'UNKNOWN';
-            // if (!grouped[src]) grouped[src] = [];
+            if (!grouped[src]) grouped[src] = [];
             grouped[src].push(ledger);
         }
 
@@ -460,7 +459,22 @@ module.exports.generateExcel = async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
         for (let srcId in grouped) {
+            // Skip source warehouses with no ledgers
+            if (grouped[srcId].length === 0) continue;
+            
             const ws = workbook.addWorksheet(srcId);
+
+            // Set column widths
+            ws.columns = [
+                { width: 14 },  // DATE
+                { width: 16 },  // MEMO
+                { width: 14 },  // LORRY NO
+                { width: 12 },  // TO PAY
+                { width: 12 },  // PAID
+                { width: 12 },  // COMSN
+                { width: 12 },  // HAMALI
+                { width: 16 }   // LORRY FREIGHT
+            ];
 
             ws.addRow(['Source Warehouse', srcId]);
             ws.addRow(['DATE RANGE', rangeLabel]);
@@ -475,13 +489,18 @@ module.exports.generateExcel = async (req, res) => {
 
                 let toPay = 0, paid = 0, hamali = 0;
 
-                for (const parcel of ledger.parcels) {
+                const parcels = ledger.parcels || [];
+                for (const parcel of parcels) {
+                    if (!parcel) continue;
+                    
+                    const freight = Number(parcel.freight) || 0;
+                    const parcelHamali = Number(parcel.hamali) || 0;
 
                     if (parcel.payment === 'To Pay') {
-                        toPay += parcel.freight;
-                        hamali += parcel.hamali;
+                        toPay += freight;
+                        hamali += parcelHamali;
                     } else if (parcel.payment === 'Paid') {
-                        paid += parcel.freight;
+                        paid += freight;
                     }
                 }
 
