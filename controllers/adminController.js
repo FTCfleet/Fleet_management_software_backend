@@ -632,7 +632,7 @@ module.exports.editRegularItems= async(req, res)=>{
 module.exports.getAllRegularClients= async(req, res)=>{
     try{
         const { page = 1, name, type = 'all' } = req.query || {};
-        const PAGE_SIZE = 200;
+        const PAGE_SIZE = 100;
         const parsedPage = parseInt(page, 10);
         const pageNumber = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
