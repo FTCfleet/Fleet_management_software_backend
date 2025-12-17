@@ -20,6 +20,8 @@ const warehouseRoutes = require("./routes/warehouseRoutes.js")
 const parcelRoutes = require("./routes/parcelRoutes.js");
 const ledgerRoutes = require("./routes/ledgerRoutes.js");
 const driverRoutes = require("./routes/driverRoutes.js");
+const serviceEnquiryRoutes = require("./routes/serviceEnquiryRoutes.js");
+const analyticsRoutes = require("./routes/analyticsRoutes.js");
 
 mongoose.connect(dbUrl);
 const db = mongoose.connection;
@@ -46,6 +48,8 @@ app.use('/api/parcel', parcelRoutes);
 app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/service-enquiry', serviceEnquiryRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 /*
 app.use('/fix', async (req, res) => {
