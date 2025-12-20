@@ -19,6 +19,9 @@ router.route('/all')
 router.route('/generate-lr-receipt/:id')
     .get(catchAsync(parcelController.generateLR))
 
+router.route('/generate-lr-receipt-thermal/:id')
+    .get(catchAsync(parcelController.generateLRThermal))
+
 router.route('/edit/:id')
     .put(authenticateToken, isSupervisor, catchAsync(parcelController.editParcel))
 

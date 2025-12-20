@@ -6,6 +6,7 @@ const RegularItem = require("../models/regularItemSchema.js");
 const Item = require("../models/itemSchema.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
+const { generateLRSheetThermal } = require("../utils/LRThermal.js");
 const Warehouse = require("../models/warehouseSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
 const {getNow} = require("../utils/dateFormatter.js");
@@ -562,6 +563,83 @@ module.exports.generateLR = async (req, res) => {
     }
 };
 
+module.exports.generateLRThermal = async (req, res) => {    
+    try {
+        const { id } = req.params;
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
+
+        if (!parcel) {
+            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
+        }
+
+        console.log('Launching Puppeteer...');
+        let launchOptions = {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        };
+
+        if (process.env.RENDER) {
+            // Render environment ΓÇö use @sparticuz/chromium
+            launchOptions = {
+                args: chromium.args,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            };
+        } else {
+            // Local development ΓÇö use installed full Puppeteer
+            const puppeteerLocal = require('puppeteer');
+            launchOptions = {
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox'],
+                executablePath: puppeteerLocal.executablePath(),
+            };
+        }
+
+        const browser = await puppeteer.launch(launchOptions);
+
+        const page = await browser.newPage();
+
+        console.log('Setting page content...');
+        // Embed logo image for header
+        let logoDataUrl = null;
+        try {
+            const logoPath = path.join(__dirname, '..', 'assets', 'logo.jpg');
+            if (fs.existsSync(logoPath)) {
+                const base64 = fs.readFileSync(logoPath).toString('base64');
+                logoDataUrl = `data:image/jpeg;base64,${base64}`;
+            }
+        } catch (e) {
+            console.warn('LR logo embedding failed:', e.message);
+        }
+        const htmlContent = generateLRSheetThermal(parcel, { logoDataUrl });
+        await page.setContent(htmlContent, { waitUntil: 'load' });
+        await page.emulateMediaType('print');
+
+        console.log('Generating PDF...');
+        const pdfBuffer = await page.pdf({
+            width: '4in',
+            height: '6in',
+            printBackground: true,
+            margin: { top: '0', right: '0', bottom: '0', left: '0' }
+        });
+
+        await browser.close();
+
+        console.log('Sending PDF response...');
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="FTC LR RECEIPT ${id}.pdf"`); 
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.end(pdfBuffer);
+
+    } catch (err) {
+        console.error('Error generating LR Receipt:', err);
+        return res.status(500).json({
+            message: "Failed to generate LR Receipt",
+            error: err.message,
+            flag: false
+        });
+    }
+};
 
 module.exports.editParcel = async (req, res) => {
     try {
