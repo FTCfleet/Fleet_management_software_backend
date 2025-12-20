@@ -120,8 +120,14 @@ module.exports.createLedger = async (req, res) => {
         const ledgerId = startName+'-'+ nextSerial;
 
         // removeOlderSequenceMemo(ledgerId);
-
-        const existingDriver = await Driver.findOne({ vehicleNo: data.vehicleNo.replaceAll(' ', '') });
+        const existingDriver = await Driver.findOne({
+            $expr: {
+                $eq: [
+                { $replaceAll: { input: "$vehicleNo", find: " ", replacement: "" } },
+                data.vehicleNo.replaceAll(' ', '')
+                ]
+            }
+        });
         if (!existingDriver) {
             if (data.driverName && data.driverName.trim() && data.driverPhone && data.driverPhone.trim()) {
                 const driver = new Driver({
@@ -166,6 +172,7 @@ module.exports.createLedger = async (req, res) => {
         return res.status(200).json({message: "Ledger created successfully", body: newLedger.ledgerId, flag:true});
         
     }catch (err) {
+        console.error('Error creating ledger:', err);
         return res.status(500).json({ message: "Failed to create new ledger", error: err.message, flag: false });
     }
 }
