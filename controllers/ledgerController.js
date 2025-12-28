@@ -12,6 +12,7 @@ const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
 const path = require('path');
+const { toDbValue, fromDbValueNum } = require("../utils/currencyUtils.js");
 
 async function getNextTrackingNumber(warehouseId) {
   const warehouse = await Warehouse.findOneAndUpdate(
@@ -150,7 +151,7 @@ module.exports.createLedger = async (req, res) => {
             scannedBySource: null,
             scannedByDest: null,
             verifiedBySource: req.user._id,
-            lorryFreight: data.lorryFreight || 0,   
+            lorryFreight: toDbValue(data.lorryFreight || 0),   
             sourceWarehouse: data.sourceWarehouse ? src._id : src,
             destinationWarehouse: dest._id
         });
@@ -500,8 +501,9 @@ module.exports.generateExcel = async (req, res) => {
                 for (const parcel of parcels) {
                     if (!parcel) continue;
                     
-                    const freight = Number(parcel.freight) || 0;
-                    const parcelHamali = Number(parcel.hamali) || 0;
+                    // Convert from DB format (divide by 100)
+                    const freight = fromDbValueNum(parcel.freight);
+                    const parcelHamali = fromDbValueNum(parcel.hamali);
 
                     if (parcel.payment === 'To Pay') {
                         toPay += freight;
@@ -512,6 +514,8 @@ module.exports.generateExcel = async (req, res) => {
                 }
 
                 const comsn = 0.15 * (toPay + paid);
+                // Convert lorryFreight from DB format
+                const lorryFreightDisplay = fromDbValueNum(ledger.lorryFreight);
                 ws.addRow([
                     formatDate(ledger.dispatchedAt),
                     ledger.ledgerId,
@@ -520,14 +524,14 @@ module.exports.generateExcel = async (req, res) => {
                     paid,
                     comsn,
                     hamali,
-                    ledger.lorryFreight
+                    lorryFreightDisplay
                 ]);
 
                 totalToPay += toPay;
                 totalPaid += paid;
                 totalComsn += comsn;
                 totalHamali += hamali;
-                totalFreight += ledger.lorryFreight;
+                totalFreight += lorryFreightDisplay;
             }
 
             ws.addRow([]);
@@ -627,7 +631,7 @@ module.exports.editLedger = async (req, res) => {
         
         if(updateData.status) ledger.status=updateData.status;
         if(updateData.vehicleNo) ledger.vehicleNo=updateData.vehicleNo;
-        if(updateData.lorryFreight) ledger.lorryFreight=updateData.lorryFreight;
+        if(updateData.lorryFreight !== undefined) ledger.lorryFreight=toDbValue(updateData.lorryFreight);
 
         if(updateData.sourceWarehouse){
             const warehouse= await Warehouse.findOne({warehouseID: updateData.sourceWarehouse});
@@ -641,8 +645,8 @@ module.exports.editLedger = async (req, res) => {
         if(updateData.hamali_freight && updateData.hamali_freight.length>0){
             for(let hf of updateData.hamali_freight){
                 const parcel= await Parcel.findOne({trackingId: hf.trackingId});
-                parcel.hamali=hf.hamali;
-                parcel.freight=hf.freight;
+                parcel.hamali=toDbValue(hf.hamali);
+                parcel.freight=toDbValue(hf.freight);
                 await parcel.save();
             }
         }

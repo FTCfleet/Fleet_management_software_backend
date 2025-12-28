@@ -1,4 +1,5 @@
 const {formatToIST} = require('../utils/dateFormatter.js')
+const { fromDbValue, fromDbValueNum } = require('../utils/currencyUtils.js')
 
 const generateLedger = (ledger, driver, options = {}) => {
     const { logoDataUrl } = options;
@@ -7,26 +8,31 @@ const generateLedger = (ledger, driver, options = {}) => {
     const toPayParcels = (ledger.parcels || []).filter(p => p.payment === 'To Pay');
     const paidParcels = (ledger.parcels || []).filter(p => p.payment === 'Paid');
     const safeNumber = (value) => Number(value) || 0;
+    
+    // Helper to convert DB value to display format
+    const displayValue = (dbValue) => fromDbValue(dbValue);
+    const displayValueNum = (dbValue) => fromDbValueNum(dbValue);
+    
     const formatHamaliCell = (parcel) => {
-        const hamali = safeNumber(parcel.hamali);
-        const doorDelivery = safeNumber(parcel.doorDeliveryCharge);
+        const hamali = displayValueNum(parcel.hamali);
+        const doorDelivery = displayValueNum(parcel.doorDeliveryCharge);
         const combined = hamali + doorDelivery;
         if (doorDelivery > 0)
-            return `${hamali} + ${doorDelivery} (DD) = ${combined}`;
-        else return `${hamali}`;
+            return `${hamali.toFixed(2)} + ${doorDelivery.toFixed(2)} (DD) = ${combined.toFixed(2)}`;
+        else return `${hamali.toFixed(2)}`;
     };
     const formatHamaliTotal = (parcels) => {
-        const hamaliSum = parcels.reduce((sum, p) => sum + safeNumber(p.hamali), 0);
-        const doorSum = parcels.reduce((sum, p) => sum + safeNumber(p.doorDeliveryCharge), 0);
+        const hamaliSum = parcels.reduce((sum, p) => sum + displayValueNum(p.hamali), 0);
+        const doorSum = parcels.reduce((sum, p) => sum + displayValueNum(p.doorDeliveryCharge), 0);
         const combined = hamaliSum + doorSum;
         if (doorSum > 0)
-            return `${hamaliSum} + ${doorSum} (DD) = ${combined}`;
-        else return `${hamaliSum}`;
+            return `${hamaliSum.toFixed(2)} + ${doorSum.toFixed(2)} (DD) = ${combined.toFixed(2)}`;
+        else return `${hamaliSum.toFixed(2)}`;
     };
 
     const renderParcelRow = (parcel, dd) => {
         
-        let hamaliRow = parcel.hamali;
+        let hamaliRow = displayValue(parcel.hamali);
         if (dd)
             hamaliRow = formatHamaliCell(parcel);
         let firstItem = parcel.items[0].name;
@@ -38,7 +44,7 @@ const generateLedger = (ledger, driver, options = {}) => {
             <td>${parcel.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
             <td>${(parcel.receiver && parcel.receiver.name) ? parcel.receiver.name : 'NA'}</td>
             <td>${parcel.payment}</td>
-            <td>${parcel.freight}</td>
+            <td>${displayValue(parcel.freight)}</td>
             <td>${hamaliRow}</td>
         </tr>
     `;};
@@ -226,8 +232,7 @@ const generateLedger = (ledger, driver, options = {}) => {
             <div id="date-time">
                 <span><strong>Date and Time:</strong> ${formatToIST(ledger.dispatchedAt)}</span>
                 <span><strong>Memo No:</strong> ${ledger.ledgerId}</span>
-                <span><strong>Lorry Freight:</strong> ${ledger.lorryFreight
-        }</span>
+                <span><strong>Lorry Freight:</strong> ${displayValue(ledger.lorryFreight)}</span>
             </div>
 
             ${details}
@@ -253,8 +258,8 @@ const generateLedger = (ledger, driver, options = {}) => {
                             <td>${toPayItems}</td>
                             <td></td>
                             <td></td>
-                            <td>₹${toPayParcels.reduce((s,p)=>s+(p.freight||0), 0)}</td>
-                            <td>₹${toPayParcels.reduce((sum, p) => sum + safeNumber(p.hamali), 0)}</td>
+                            <td>₹${toPayParcels.reduce((s,p)=>s+displayValueNum(p.freight), 0).toFixed(2)}</td>
+                            <td>₹${toPayParcels.reduce((sum, p) => sum + displayValueNum(p.hamali), 0).toFixed(2)}</td>
                         </tr>
                         ${paidRows}
                         <tr style="font-weight: bold; background-color: #f5f5f5;">
@@ -262,7 +267,7 @@ const generateLedger = (ledger, driver, options = {}) => {
                             <td>${paidItems}</td>
                             <td></td>
                             <td></td>
-                            <td>₹${paidParcels.reduce((s,p)=>s+(p.freight||0),0)}</td>
+                            <td>₹${paidParcels.reduce((s,p)=>s+displayValueNum(p.freight),0).toFixed(2)}</td>
                             <td>₹${formatHamaliTotal(paidParcels)}</td>
                         </tr>
                     </tbody>

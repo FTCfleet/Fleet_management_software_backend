@@ -8,6 +8,7 @@ const Client = require("../models/clientSchema.js");
 const RegularClient= require("../models/regularClientSchema.js");
 const RegularItem= require("../models/regularItemSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
+const { toDbValue } = require("../utils/currencyUtils.js");
 
 const toBoolean = (value) => {
     if (typeof value === 'string') {
@@ -462,8 +463,8 @@ module.exports.addNewRegularItems= async(req, res)=>{
             preparedItems.push({
                 name: rawName,
                 itemType: typeRecord._id,
-                freight: item.freight,
-                hamali: item.hamali
+                freight: toDbValue(item.freight),
+                hamali: toDbValue(item.hamali)
             });
         }
 
@@ -610,10 +611,10 @@ module.exports.editRegularItems= async(req, res)=>{
                 existingItem.itemType= itemType._id;
             }
             if (Object.prototype.hasOwnProperty.call(item, 'freight')){
-                existingItem.freight = item.freight;
+                existingItem.freight = toDbValue(item.freight);
             }
             if (Object.prototype.hasOwnProperty.call(item, 'hamali')){
-                existingItem.hamali = item.hamali;
+                existingItem.hamali = toDbValue(item.hamali);
             }
 
             await existingItem.save();

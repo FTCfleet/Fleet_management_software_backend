@@ -15,6 +15,7 @@ const chromium = require('@sparticuz/chromium');
 const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
 const fs = require('fs');
 const path = require('path');
+const { toDbValue } = require("../utils/currencyUtils.js");
 
 const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
 const normalizeString = (value) => typeof value === 'string' ? value.trim() : '';
@@ -244,13 +245,17 @@ module.exports.newParcel = async (req, res) => {
                 continue;
             }
 
+            // Convert freight and hamali to DB format (multiply by 100)
+            const freightDb = toDbValue(item.freight);
+            const hamaliDb = toDbValue(item.hamali);
+
             const existingItem = await RegularItem.findOne({ name: rawItemName, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
             if (!existingItem) {
                 const newItem = new RegularItem({
                     name: rawItemName,
                     itemType: typeRecord._id,
-                    freight: item.freight,
-                    hamali: item.hamali,
+                    freight: freightDb,
+                    hamali: hamaliDb,
                 });
                 await newItem.save();
             }
@@ -259,13 +264,13 @@ module.exports.newParcel = async (req, res) => {
                 name: rawItemName,
                 itemType: typeRecord._id,
                 quantity: item.quantity,
-                freight: item.freight,
-                hamali: item.hamali,
+                freight: freightDb,
+                hamali: hamaliDb,
             });
             const savedItem = await newItem.save();
             itemEntries.push(savedItem._id);
-            totalFreight += Number(item.freight*item.quantity || 0);
-            totalHamali += Number(item.hamali*item.quantity || 0);
+            totalFreight += freightDb * item.quantity;
+            totalHamali += hamaliDb * item.quantity;
         }
 
         await Promise.all([
@@ -295,7 +300,7 @@ module.exports.newParcel = async (req, res) => {
             lastModifiedAt: getNow(),
             addedBy: req.user._id,
             lastModifiedBy: req.user._id,
-            doorDeliveryCharge: isDoorDelivery ? doorDeliveryCharge : 0
+            doorDeliveryCharge: isDoorDelivery ? toDbValue(doorDeliveryCharge) : 0
         });
         // console.log(newParcel.placedAt);
 
@@ -678,13 +683,17 @@ module.exports.editParcel = async (req, res) => {
                     typeCache.set(cacheKey, typeRecord);
                 }
 
+                // Convert freight and hamali to DB format (multiply by 100)
+                const freightDb = toDbValue(item.freight);
+                const hamaliDb = toDbValue(item.hamali);
+
                 const existingItem = await RegularItem.findOne({ name: item.name, itemType: typeRecord._id }).collation(ITEM_TYPE_COLLATION);
                 if (!existingItem) {
                     const newItem = new RegularItem({
                         name: item.name,
                         itemType: typeRecord._id,
-                        freight: item.freight,
-                        hamali: item.hamali,
+                        freight: freightDb,
+                        hamali: hamaliDb,
                     });
                     await newItem.save();
                 }
@@ -692,8 +701,8 @@ module.exports.editParcel = async (req, res) => {
                 const newItem = new Item({
                     name: item.name,
                     itemType: typeRecord._id,
-                    hamali: item.hamali,
-                    freight: item.freight,
+                    hamali: hamaliDb,
+                    freight: freightDb,
                     quantity: item.quantity,
                 });
                 await newItem.save();
@@ -755,7 +764,7 @@ module.exports.editParcel = async (req, res) => {
         }
         if (updateData.isDoorDelivery !== undefined) {
             parcel.isDoorDelivery = updateData.isDoorDelivery;
-            parcel.doorDeliveryCharge = updateData.isDoorDelivery ? (updateData.doorDeliveryCharge || 0) : 0;
+            parcel.doorDeliveryCharge = updateData.isDoorDelivery ? toDbValue(updateData.doorDeliveryCharge || 0) : 0;
         }
         if (req.user.role === 'admin' && updateData.status) {
             parcel.status = updateData.status;

@@ -1,8 +1,14 @@
 const {formatToIST} = require("../utils/dateFormatter.js");
+const { fromDbValue, fromDbValueNum } = require("../utils/currencyUtils.js");
 
 const generateLR = (parcel, auto = 0, options = {}) => {
     const { logoDataUrl } = options;
     let index = 1;
+    
+    // Helper to convert DB value to display format
+    const displayValue = (dbValue) => fromDbValue(dbValue);
+    const displayValueNum = (dbValue) => fromDbValueNum(dbValue);
+    
     let allitems = parcel.items.map(item => {
         if (auto == 1) {
             return `
@@ -13,19 +19,21 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             </tr>
             `;
         } else {
+            // Calculate item amount: freight + hamali + hamali (statistical)
+            const itemAmount = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
             return `
             <tr>
                 <td>${index++}</td>
                 <td>${item.name}  (${item.itemType.name})</td>  
                 <td>${item.quantity}</td>
-                <td>${`₹${item.freight + item.hamali + item.hamali}`}</td>
+                <td>${`₹${itemAmount.toFixed(2)}`}</td>
             </tr>
             `;
         }
     }).join('');
 
-    let totalFreight = parcel.freight;
-    let totalHamali = parcel.hamali;
+    let totalFreight = displayValueNum(parcel.freight);
+    let totalHamali = displayValueNum(parcel.hamali);
     let totalItems = parcel.items.reduce((sum, item) => sum + item.quantity, 0);
     let totalAmount = totalFreight + 2*totalHamali;
 
@@ -59,7 +67,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <tr class="total-row">
                 <td colspan="2">Total</td>
                 <td>${totalItems}</td>
-                <td>${`₹${totalAmount}`}</td>
+                <td>${`₹${totalAmount.toFixed(2)}`}</td>
             </tr>
             `;
     }
@@ -117,8 +125,8 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                         </tbody>
                     </table>
                     <div style="display: flex; justify-content: space-between;">
-                        <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : parcel.doorDeliveryCharge : 'No'}</div>
-                        ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
+                        <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge) : 'No'}</div>
+                        ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</div>` : ''}
                     </div>
                     <div class="meta">
                         <span>Declared goods value ₹${parcel.declaredValue || "____"}</span>
