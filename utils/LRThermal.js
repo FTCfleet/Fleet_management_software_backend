@@ -19,8 +19,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             </tr>
             `;
         } else {
-            // Calculate item amount: freight + hamali + hamali (statistical)
-            const itemAmount = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
+            // Calculate item amount: (freight + hamali + hamali) × quantity
+            const itemRate = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
+            const itemAmount = itemRate * item.quantity;
             return `
             <tr>
                 <td>${index++}</td>
