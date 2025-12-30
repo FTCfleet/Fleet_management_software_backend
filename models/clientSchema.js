@@ -28,5 +28,8 @@ const clientSchema = new mongoose.Schema({
     },
 });
 
+// Index for name search
+clientSchema.index({ name: 1 });
+
 
 module.exports = mongoose.model('Client', clientSchema);

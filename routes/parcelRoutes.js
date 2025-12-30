@@ -14,7 +14,7 @@ router.route('/generate-qr/:id')
     .get(catchAsync(parcelController.generateQRCodes))
 
 router.route('/all')
-    .post(authenticateToken, isSupervisor, catchAsync(parcelController.allParcel));
+    .get(authenticateToken, isSupervisor, catchAsync(parcelController.allParcel));
 
 router.route('/generate-lr-receipt/:id')
     .get(catchAsync(parcelController.generateLR))

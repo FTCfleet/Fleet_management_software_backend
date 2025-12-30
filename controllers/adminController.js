@@ -355,7 +355,7 @@ module.exports.deleteLedger = async (req, res) => {
 module.exports.getAllRegularItems= async(req, res)=>{
     try{
         const { page = 1, name } = req.query || {};
-        const PAGE_SIZE = 200;
+        const PAGE_SIZE = 100;
         const parsedPage = parseInt(page, 10);
         const pageNumber = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 

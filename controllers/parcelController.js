@@ -335,80 +335,154 @@ module.exports.trackParcel = async (req, res) => {
 
 module.exports.allParcel = async (req, res) => {
     try {
-        if ((!req.user || !req.user.warehouseCode) && !req.user.role === 'admin') {
+        if (!req.user || !req.user.warehouseCode) {
             return res.status(401).json({
                 message: "Unauthorized: No warehouse access", flag: false
             });
         }
+
+        // 1. Pagination
+        const page = parseInt(req.query.page) || 1;
+        const PAGE_SIZE = 200;
+
+        // 2. Date Filter (Mandatory)
+        const dateInput = req.query.date;
+        if (!dateInput) {
+             return res.status(400).json({ message: "Date parameter is required (YYYY-MM-DD)", flag: false });
+        }
+        // Normalize date input YYYY-MM-DD
+        // const formattedDate = dateInput.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'); 
+        // Need to handle if input is already YYYY-MM-DD or YYYYMMDD? 
+        // Existing logic used replace assuming YYYYMMDD -> YYYY-MM-DD. 
+        // If frontend sends 2023-12-30 directly, the regex might fail or produce wrong result if not careful.
+        // Let's support both or assume YYYY-MM-DD standard if possible, but keep compat with existing logic if YYYYMMDD was expected.
+        // User Request: "Get the date... Send data in pagination... The date filter is that send the parcels of only that date"
+        // Let's trust standard Date parsing.
         
-        const src= req.query.src;
-        const dest= req.query.dest;
-        
-        // console.log("Source:", src, "Destination:", dest);
-        
-        // console.log(q);
-        let srcWh= null;
-        let destWh= null;
-        if(src && src !== 'all'){
+        let startDate, endDate;
+        // if(dateInput.match(/^\d{8}$/)) {
+        //     const f = dateInput.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+        //     startDate = new Date(`${f}T00:00:00.000Z`);
+        //     endDate = new Date(`${f}T23:59:59.999Z`);
+        // } else {
+             // Assume YYYY-MM-DD
+             startDate = new Date(`${dateInput}T00:00:00.000Z`);
+             endDate = new Date(`${dateInput}T23:59:59.999Z`);
+        // }
+
+        if (isNaN(startDate.getTime())) {
+             return res.status(400).json({ message: "Invalid Date format", flag: false });
+        }
+
+        let query = {
+            placedAt: { $gte: startDate, $lte: endDate }
+        };
+
+        // 3. Status Filter (Optional)
+        if (req.query.status && req.query.status !== 'all') {
+            query.status = req.query.status;
+        }
+
+        // 4. Warehouse Logic
+        const { src, dest } = req.query;
+        let srcWh = null, destWh = null;
+
+        if (src && src !== 'all') {
             srcWh = await Warehouse.findOne({ warehouseID: src });
-            if(!srcWh){
-                return res.status(404).json({ message: `Source Warehouse with ID ${src} not found`, flag: false });
-            }
+            if (srcWh) query.sourceWarehouse = srcWh._id;
+        }
+        if (dest && dest !== 'all') {
+            destWh = await Warehouse.findOne({ warehouseID: dest });
+            if (destWh) query.destinationWarehouse = destWh._id;
         }
 
-        if(dest){
-            destWh = await Warehouse.findOne({ warehouseID: dest });   
-            if(!destWh){
-                return res.status(404).json({ message: `Destination Warehouse with ID ${dest} not found`, flag: false });
+        // Role-Based Strict Filtering
+        if (req.user.role !== 'admin') {
+            const employeeWhCode = req.user.warehouseCode; // This is populated object
+            
+            // Re-verify it is a populated object not just ID
+            let whIsSource = false;
+            let whId = employeeWhCode._id;
+
+            if (employeeWhCode.isSource !== undefined) {
+                 whIsSource = employeeWhCode.isSource;
+            } else {
+                 // If not populated for some reason, fetch it
+                 const w = await Warehouse.findById(employeeWhCode);
+                 if (w) {
+                     whIsSource = w.isSource;
+                     whId = w._id;
+                 }
+            }
+
+            if (whIsSource) {
+                // Must equal Source
+                query.sourceWarehouse = whId;
+            } else {
+                // Must equal Destination
+                query.destinationWarehouse = whId;
             }
         }
         
-        const employeeWHcode = req.user.warehouseCode;
-        // console.log(wh);
-
-        const formattedDate = req.body.date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-        const startDate = new Date(`${formattedDate}T00:00:00.000Z`);
-        const endDate = new Date(`${formattedDate}T23:59:59.999Z`);
-
-        // console.log(startDate);
-        // console.log(endDate);
-        let parcels;
-        if (src){
-            if (src === 'all'){
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                    destinationWarehouse: destWh._id,
-                    status: 'arrived'
-                })
-                .populate(createParcelPopulateConfig());
-            }
-            else{
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                    sourceWarehouse: srcWh._id,
-                    destinationWarehouse: destWh._id,
-                    status: 'arrived'
-                })
-                .populate(createParcelPopulateConfig());
-
+        // 5. Search Filters
+        
+        // ID Search
+        if (req.query.id) {
+            const idKey = req.query.id.trim();
+            if (idKey) {
+                query.trackingId = { $regex: '^' + idKey, $options: 'i' };
             }
         }
-        else{
-            if (req.user.role === 'admin') {
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                })
-                .populate(createParcelPopulateConfig());
-            }
-            else{
-                parcels = await Parcel.find({
-                    placedAt: { $gte: startDate, $lte: endDate },
-                    $or: [{ sourceWarehouse: employeeWHcode }, { destinationWarehouse: employeeWHcode }],
-                })
-                .populate(createParcelPopulateConfig());
+
+        // Name Search (Sender/Receiver)
+        if (req.query.name) {
+            const nameKey = req.query.name.trim();
+            if (nameKey) {
+                // Optimization: Find Client IDs first
+                const clients = await Client.find({ 
+                    name: { $regex: '^' + nameKey, $options: 'i' } 
+                }).select('_id');
+                const clientIds = clients.map(c => c._id);
+                
+                // Add to query (AND logic with existing filters)
+                // Use $and to cleanly combine with any existing sourceWarehouse logic
+                const nameFilter = { 
+                    $or: [
+                        { sender: { $in: clientIds } }, 
+                        { receiver: { $in: clientIds } }
+                    ] 
+                };
+                
+                // Merge safely
+                if (query.$or) {
+                    // This shouldn't happen with current logic as we set fields directly, 
+                    // but good practice if we changed logic above. 
+                    // Current logic above sets query.sourceWarehouse = ... (direct assignment), not via $or.
+                    // So we can simply add $or here.
+                    query.$or = nameFilter.$or;
+                } else {
+                    Object.assign(query, nameFilter);
+                }
             }
         }
-        return res.status(200).json({ body: parcels, message: "Successfully fetched all parcels", flag: true });
+
+        const parcels = await Parcel.find(query)
+            .populate(createParcelPopulateConfig())
+            .sort({ placedAt: -1 }) // Newest first
+            .skip((page - 1) * PAGE_SIZE)
+            .limit(PAGE_SIZE);
+
+        const totalParcels = await Parcel.countDocuments(query);
+
+        return res.status(200).json({ 
+            body: {
+                parcels,
+                page: page,
+                pageSize: PAGE_SIZE,
+                totalPages: totalParcels === 0 ? 0 : Math.ceil(totalParcels / PAGE_SIZE),
+                totalParcels
+            },
+            message: "Successfully fetched parcels", flag: true });
 
     } catch (err) {
         console.error('Error:', err);

@@ -103,5 +103,11 @@ const parcelSchema = new mongoose.Schema({
     }
 });
 
+// Indexes for search and sorting performance
+// parcelSchema.index({ trackingId: 1 }); // Already indexed by unique: true
+parcelSchema.index({ placedAt: -1 });
+parcelSchema.index({ sender: 1 });
+parcelSchema.index({ receiver: 1 });
+
 const Parcel = mongoose.model('Parcel', parcelSchema);
 module.exports = Parcel;
