@@ -16,6 +16,9 @@ router.route('/generate-qr/:id')
 router.route('/all')
     .get(authenticateToken, isSupervisor, catchAsync(parcelController.allParcel));
 
+router.route('/for-memo')
+    .get(authenticateToken, isSupervisor, catchAsync(parcelController.getParcelsForMemo));
+
 router.route('/generate-lr-receipt/:id')
     .get(catchAsync(parcelController.generateLR))
 

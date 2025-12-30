@@ -493,6 +493,126 @@ module.exports.allParcel = async (req, res) => {
         });
     }
 };
+
+/**
+ * GET /api/parcel/for-memo
+ * Fetch ALL eligible parcels for memo/ledger creation (no pagination)
+ * 
+ * Query params:
+ * - date: YYYY-MM-DD (required)
+ * - src: source warehouse ID (optional, 'all' for all sources)
+ * - dest: destination warehouse ID (required for memo creation)
+ * 
+ * Returns: Array of parcels with status 'arrived' (eligible for memo)
+ */
+module.exports.getParcelsForMemo = async (req, res) => {
+    try {
+        if (!req.user || !req.user.warehouseCode) {
+            return res.status(401).json({
+                message: "Unauthorized: No warehouse access", flag: false
+            });
+        }
+
+        // Date Filter (Mandatory)
+        const dateInput = req.query.date;
+        if (!dateInput) {
+            return res.status(400).json({ 
+                message: "Date parameter is required (YYYY-MM-DD)", 
+                flag: false 
+            });
+        }
+
+        const startDate = new Date(`${dateInput}T00:00:00.000Z`);
+        const endDate = new Date(`${dateInput}T23:59:59.999Z`);
+
+        if (isNaN(startDate.getTime())) {
+            return res.status(400).json({ 
+                message: "Invalid Date format", 
+                flag: false 
+            });
+        }
+
+        // Destination warehouse (required for memo)
+        const { dest } = req.query;
+        if (!dest) {
+            return res.status(400).json({ 
+                message: "Destination warehouse is required", 
+                flag: false 
+            });
+        }
+
+        const destWh = await Warehouse.findOne({ warehouseID: dest });
+        if (!destWh) {
+            return res.status(404).json({ 
+                message: `Destination Warehouse with ID ${dest} not found`, 
+                flag: false 
+            });
+        }
+
+        // Build query - only 'arrived' parcels are eligible for memo
+        let query = {
+            placedAt: { $gte: startDate, $lte: endDate },
+            destinationWarehouse: destWh._id,
+            status: 'arrived'
+        };
+
+        // Source warehouse filter
+        const { src } = req.query;
+        if (src && src !== 'all') {
+            const srcWh = await Warehouse.findOne({ warehouseID: src });
+            if (!srcWh) {
+                return res.status(404).json({ 
+                    message: `Source Warehouse with ID ${src} not found`, 
+                    flag: false 
+                });
+            }
+            query.sourceWarehouse = srcWh._id;
+        }
+
+        // Role-based filtering (non-admin users)
+        if (req.user.role !== 'admin') {
+            const employeeWhCode = req.user.warehouseCode;
+            let whId = employeeWhCode._id;
+
+            // Ensure employee's warehouse matches source (for source warehouses)
+            // or destination (for destination warehouses)
+            let whIsSource = employeeWhCode.isSource;
+            if (whIsSource === undefined) {
+                const w = await Warehouse.findById(employeeWhCode);
+                if (w) {
+                    whIsSource = w.isSource;
+                    whId = w._id;
+                }
+            }
+
+            if (whIsSource) {
+                query.sourceWarehouse = whId;
+            } else {
+                query.destinationWarehouse = whId;
+            }
+        }
+
+        // Fetch ALL parcels (no pagination for memo creation)
+        const parcels = await Parcel.find(query)
+            .populate(createParcelPopulateConfig())
+            .sort({ placedAt: -1 });
+
+        return res.status(200).json({ 
+            body: parcels, 
+            message: "Successfully fetched all parcels for memo", 
+            flag: true 
+        });
+
+    } catch (err) {
+        console.error('Error fetching parcels for memo:', err);
+        return res.status(500).json({
+            message: "Error fetching parcels",
+            error: err.message,
+            flag: false
+        });
+    }
+};
+
 module.exports.generateQRCodes = async (req, res) => {
     try {
         const { id } = req.params;
