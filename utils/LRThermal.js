@@ -79,8 +79,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="lr-receipt">
                 <div class="content-wrapper">
                     <div class="header">
-                        <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
-                        <div class="lr-no">LR No: ${parcel.trackingId}</div>
+                        <div class="header-top-row">
+                            <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
+                            <div class="lr-no">LR No: ${parcel.trackingId}</div>
+                        </div>
                         <div class="top-bar">
                             <div class="logo-wrapper">
                                 ${logoImg}
@@ -93,7 +95,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                                 <div><span class="phone-icon">☎</span> <strong>HYD-01: </strong>24614381</div>
                                 <div><strong>HYD-02: </strong>24604381 </div>
                                 <div><strong>SECBAD: </strong>29331533  </div>
-                                <div><strong>BDPURA: </strong>9515409041   </div>
+                                <div><strong>BDPURA: </strong>9515409041</div>
                             </div>
                         </div>
                     </div>
@@ -125,8 +127,8 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                             ${totalRow}
                         </tbody>
                     </table>
-                    <div style="display: flex; justify-content: space-between;">
-                        <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge) : 'No'}</div>
+                    <div class="delivery-total-row">
+                        <div>Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge) : 'No'}</div>
                         ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</div>` : ''}
                     </div>
                     <div class="meta">
@@ -140,12 +142,15 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     <div class="branches">◆ Karimnagar-9908690827 ◆ Sultanabad-Ph: 9849701721 ◆ Peddapally-Cell: 7036323006 ◆ Godavari Khani-Cell: 9949121267 ◆ Mancherial-Cell: 8977185376</div>
                     <div class="branches">FTC is not responsible for Leakage & Breakage.</div>
                 </div>
-                <div style="text-align: right; display: absolute;font-size: 6px">Created by: ${parcel.addedBy.name}</div>
+                <div class="created-by">Created by: ${parcel.addedBy.name}</div>
             </div>
     `;
 };
 
 const generateLRSheetThermal = (parcel, options = {}) => {
+    // Each LR: 8cm wide (left to right) × 6in tall (top to bottom) after rotation
+    // Content is laid out as 6in wide × 8cm tall, then rotated 90° clockwise
+    // Total page: 8cm wide × 18in tall (3 × 6in)
     return `
         <!DOCTYPE html>
         <html>
@@ -153,24 +158,52 @@ const generateLRSheetThermal = (parcel, options = {}) => {
             <title>FTC LR Receipt</title>
             <style>
                 @page {
-                    size: 4in 6in;
+                    size: 80mm 18in;
                     margin: 0;
                 }
-                body { width: 4in; height: 6in; margin: 0; padding: 1.5mm; font-family: Arial, sans-serif; font-size: 6px; }
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    width: 80mm;
+                    margin: 0;
+                    padding: 0;
+                    font-family: Arial, sans-serif;
+                }
                 .sheet {
-                    width: 100%;
-                    height: 100%;
+                    width: 80mm;
                     display: flex;
                     flex-direction: column;
+                }
+                /* Each wrapper is 80mm wide × 6in tall on the page */
+                .lr-wrapper {
+                    width: 80mm;
+                    height: 6in;
+                    position: relative;
+                    overflow: hidden;
+                    page-break-inside: avoid;
+                }
+                /* Content is 6in wide × 76mm tall before rotation */
+                /* After 90° clockwise rotation: 76mm wide × 6in tall */
+                .lr-rotated {
+                    width: 6in;
+                    height: 76mm;
+                    transform: rotate(90deg);
+                    transform-origin: top left;
+                    position: absolute;
+                    top: 0;
+                    left: 80mm;
                 }
                 .lr-receipt {
                     width: 100%;
                     height: 100%;
                     border: 1px dotted #000;
-                    padding: 1mm 2mm 2mm 2mm; /* reduce top padding to offset larger header spacing */
+                    padding: 2mm 3mm;
+                    margin: 2mm;
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
+                    font-size: 8px;
                 }
                 .content-wrapper {
                     flex-grow: 1;
@@ -178,127 +211,90 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     flex-direction: column;
                 }
                 .footer {
-                    margin-top: auto; /* Push footer to the bottom */
+                    margin-top: auto;
+                }
+                .header-top-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 1.5mm;
                 }
                 .jurisdiction {
-                    text-align: center;
                     text-decoration: underline;
-                    font-size: 5px;
-                    margin-top: 0.6mm; /* push jurisdiction lower */
-                    margin-bottom: 2mm; /* tighter gap before company header */
-                }
-
-                .lr-no{
-                    position: absolute;
-                    right: 3.5mm;
-                    margin-top: -3.5mm;
-                    font-weight: bold;
                     font-size: 7px;
                 }
-
+                .lr-no {
+                    font-weight: bold;
+                    font-size: 10px;
+                }
                 .header {
                     text-align: center;
-                    margin-bottom: 0.6mm;
+                    margin-bottom: 1mm;
                 }
                 .top-bar {
                     display: grid;
                     grid-template-columns: auto 1fr auto;
                     align-items: flex-start;
                     column-gap: 3mm;
-                    margin-top: -1mm;  /* keep header in place despite added top padding */
                     font-family: Arial, sans-serif;
                 }
-
                 .logo-wrapper {
-                    margin-top:-1mm;
                     justify-self: start;
                     align-self: flex-start;
                     text-align: left;
                 }
-
                 .logo-wrapper .logo {
-                    width: 14mm; /* more prominent logo */
+                    width: 14mm;
                     height: auto;
                 }
-
                 .top-title {
                     align-items: center;
                     justify-content: center;
                     text-align: center;
                     width: 100%;
                 }
-
                 .company-name {
                     display: inline-block;
-                    font-size: 14px; /* increased font for better readability */
+                    font-size: 16px;
                     font-weight: bold;
-                    letter-spacing: 0.6px; /* wider lettering */
+                    letter-spacing: 0.5px;
                     white-space: nowrap;
                 }
-
+                .address {
+                    font-size: 7px;
+                    margin-bottom: 2px;
+                    line-height: 1.3;
+                }
                 .contact {
                     display: flex;
                     flex-direction: column;
                     align-items: flex-end;
                     text-align: right;
-                    font-size: 4.5px; /* smaller than title */
-                    line-height: 1.2;
+                    font-size: 6px;
+                    line-height: 1.3;
                     justify-self: end;
                 }
-
                 .phone-icon {
-                    margin-right: 2mm;
+                    margin-right: 1mm;
                 }
-
-                .top-bar .right { font-size: 5px; }
                 .company-row {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    position: relative;
-                    text-align: center;
-                    font-size: 6px;
-                    margin-bottom: 2px;
-                }
-                .route-from, .route-to {
-                    position: absolute;
-                }
-                .route-from {
-                    left: 0;
-                }
-
-                .date {
-                    position: absolute;
-                    left: 40%;
-                }
-                .route-to {
-                    right: 0;
-                }
-                .header h1 {
-                    margin: 0;
-                    padding: 0;
                     font-size: 8px;
-                    font-weight: bold;
-                    text-align: center;
-                    width: 100%;
-                }
-                .address {
-                    font-size: 5px;
                     margin-bottom: 2px;
                 }
-                .route { display: flex; justify-content: center; gap: 2mm; font-size: 6px; margin: 0.5mm 0; }
-                .route .sep { margin: 0 1mm; }
-                .lr-header-row {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 6px;
-                    margin: 0.5mm 0 0.3mm 0;
+                .route-from, .date, .route-to {
+                    flex: 1;
                 }
+                .route-from { text-align: left; }
+                .date { text-align: center; }
+                .route-to { text-align: right; }
                 .consignor-consignee {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 6px;
-                    margin: 0.5mm 0;
+                    font-size: 8px;
+                    margin: 1mm 0;
                 }
                 .consignor, .consignee {
                     display: flex;
@@ -308,56 +304,81 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 .label {
                     font-weight: bold;
                 }
-                .phone {
-                    color: #666;
-                }
                 .main-table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 6px;
-                    margin: 0.7mm 0;
+                    font-size: 8px;
+                    margin: 1mm 0;
                     table-layout: fixed;
                 }
-        /* 6-column widths: S.No | Item | Qty | Freight | Hamali | Statical */
-        .main-table thead tr th:nth-child(1), .main-table tbody tr td:nth-child(1) { width: 8%; }
-        .main-table thead tr th:nth-child(2), .main-table tbody tr td:nth-child(2) { width: 42%; }
-        .main-table thead tr th:nth-child(3), .main-table tbody tr td:nth-child(3) { width: 10%; }
-        .main-table thead tr th:nth-child(4), .main-table tbody tr td:nth-child(4) { width: 13%; }
-        .main-table thead tr th:nth-child(5), .main-table tbody tr td:nth-child(5) { width: 13%; }
-        .main-table thead tr th:nth-child(6), .main-table tbody tr td:nth-child(6) { width: 14%; }
-        /* 4-column widths for auto table: S.No | Item | Qty */
-        .auto-table thead tr th:nth-child(1), .auto-table tbody tr td:nth-child(1) { width: 12%; }
-        .auto-table thead tr th:nth-child(2), .auto-table tbody tr td:nth-child(2) { width: 68%; }
-        .auto-table thead tr th:nth-child(3), .auto-table tbody tr td:nth-child(3) { width: 20%; }
-        .main-table th, .main-table td {
-            border: 1px solid #000;
-            padding: 0.4mm;
-            text-align: center;
-        }
-        .main-table th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-        }
-        .total-row {
-            font-weight: bold;
-            background-color: #f0f0f0;
-            }
-            .meta { display: flex; align-items: center; justify-content: space-between; font-size: 6px; margin: 0.5mm 0; }
-            .branches { font-size: 4px; text-align: center; line-height: 1.1; margin: 0.5mm 0; }
-            .total-value {
-                font-weight: bold;
-                text-align: right;
-                font-size: 6px;
-                margin-top: 0.1mm;
-
+                .main-table thead tr th:nth-child(1), .main-table tbody tr td:nth-child(1) { width: 10%; }
+                .main-table thead tr th:nth-child(2), .main-table tbody tr td:nth-child(2) { width: 50%; }
+                .main-table thead tr th:nth-child(3), .main-table tbody tr td:nth-child(3) { width: 15%; }
+                .main-table thead tr th:nth-child(4), .main-table tbody tr td:nth-child(4) { width: 25%; }
+                .auto-table thead tr th:nth-child(1), .auto-table tbody tr td:nth-child(1) { width: 15%; }
+                .auto-table thead tr th:nth-child(2), .auto-table tbody tr td:nth-child(2) { width: 65%; }
+                .auto-table thead tr th:nth-child(3), .auto-table tbody tr td:nth-child(3) { width: 20%; }
+                .main-table th, .main-table td {
+                    border: 1px solid #000;
+                    padding: 0.5mm;
+                    text-align: center;
+                }
+                .main-table th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }
+                .total-row {
+                    font-weight: bold;
+                    background-color: #f0f0f0;
+                }
+                .delivery-total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 8px;
+                    margin-top: 1mm;
+                }
+                .total-value {
+                    font-weight: bold;
+                    text-align: right;
+                    font-size: 8px;
+                }
+                .meta {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 7px;
+                    margin: 1mm 0;
+                }
+                .branches {
+                    font-size: 5px;
+                    text-align: center;
+                    line-height: 1.2;
+                    margin: 0.5mm 0;
+                }
+                .created-by {
+                    text-align: right;
+                    font-size: 6px;
+                    margin-top: 1mm;
                 }
             </style>
         </head>
         <body>
             <div class="sheet">
-                ${generateLR(parcel, 0, options)}
-                ${generateLR(parcel, 0, options)}
-                ${generateLR(parcel, 1, options)}
+                <div class="lr-wrapper">
+                    <div class="lr-rotated">
+                        ${generateLR(parcel, 0, options)}
+                    </div>
+                </div>
+                <div class="lr-wrapper">
+                    <div class="lr-rotated">
+                        ${generateLR(parcel, 0, options)}
+                    </div>
+                </div>
+                <div class="lr-wrapper">
+                    <div class="lr-rotated">
+                        ${generateLR(parcel, 1, options)}
+                    </div>
+                </div>
             </div>
         </body>
         </html>
