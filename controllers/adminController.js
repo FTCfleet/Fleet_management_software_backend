@@ -8,6 +8,8 @@ const Client = require("../models/clientSchema.js");
 const RegularClient= require("../models/regularClientSchema.js");
 const RegularItem= require("../models/regularItemSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
+const mongoose = require("mongoose");
+
 const { toDbValue } = require("../utils/currencyUtils.js");
 
 const toBoolean = (value) => {
@@ -327,30 +329,73 @@ module.exports.deleteParcel = async (req, res) => {
 }
 
 //
+
 module.exports.deleteLedger = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { ledgerId } = req.body;
-        const ledger = await Ledger.findOne({ ledgerId });
 
+        const ledger = await Ledger.findOne({ ledgerId }).session(session);
         if (!ledger) {
-            return res.status(404).json({ message: `No ledger found with ID: ${ledgerId}` , flag:false});
+            await session.abortTransaction();
+            return res.status(404).json({
+                message: `No ledger found with ID: ${ledgerId}`,
+                flag: false
+            });
         }
 
-        const parcelIds = ledger.parcels;
-        for (const id of parcelIds) {
-            const parcel = await Parcel.findById(id);
-            delete parcel.ledgerId;
-            parcel.ledgerId = undefined;
-            parcel.status = 'arrived';
-            await parcel.save();
-        }
-        await Ledger.deleteOne({ ledgerId });
+        const ledgerSequence = Number(ledgerId.slice(-5));
 
-        return res.status(200).json({ message: "Successfully deleted ledger", body: ledger , flag:true});
+        if (!Number.isNaN(ledgerSequence)) {
+            const warehouse = await Warehouse.findById(
+                ledger.destinationWarehouse
+            ).session(session);
+    
+            if (warehouse) {
+                if (warehouse.memoSequence === ledgerSequence) {
+                    warehouse.memoSequence -= 1;
+                    await warehouse.save({ session });
+                }
+            }
+    
+        }
+
+        for (const id of ledger.parcels) {
+            await Parcel.findByIdAndUpdate(
+                id,
+                {
+                    $unset: { ledgerId: "" },
+                    status: "arrived"
+                },
+                { session }
+            );
+        }
+
+        await Ledger.deleteOne({ ledgerId }).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.status(200).json({
+            message: "Successfully deleted ledger",
+            body: ledger,
+            flag: true
+        });
+
     } catch (err) {
-        return res.status(500).json({ message: "Failed to delete ledger", error: err.message , flag:false});
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.status(500).json({
+            message: "Failed to delete ledger",
+            error: err.message,
+            flag: false
+        });
     }
-}
+};
+
 
 module.exports.getAllRegularItems= async(req, res)=>{
     try{
