@@ -360,15 +360,8 @@ module.exports.allParcel = async (req, res) => {
         // Let's trust standard Date parsing.
         
         let startDate, endDate;
-        // if(dateInput.match(/^\d{8}$/)) {
-        //     const f = dateInput.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-        //     startDate = new Date(`${f}T00:00:00.000Z`);
-        //     endDate = new Date(`${f}T23:59:59.999Z`);
-        // } else {
-             // Assume YYYY-MM-DD
-             startDate = new Date(`${dateInput}T00:00:00.000Z`);
-             endDate = new Date(`${dateInput}T23:59:59.999Z`);
-        // }
+        startDate = new Date(`${dateInput}T00:00:00.000Z`);
+        endDate = new Date(`${dateInput}T23:59:59.999Z`);
 
         if (isNaN(startDate.getTime())) {
              return res.status(400).json({ message: "Invalid Date format", flag: false });
@@ -389,32 +382,32 @@ module.exports.allParcel = async (req, res) => {
 
         if (src && src !== 'all') {
             srcWh = await Warehouse.findOne({ warehouseID: src });
-            if (srcWh) query.sourceWarehouse = srcWh._id;
+            if (srcWh && srcWh.isSource) query.sourceWarehouse = srcWh._id;
         }
         if (dest && dest !== 'all') {
             destWh = await Warehouse.findOne({ warehouseID: dest });
-            if (destWh) query.destinationWarehouse = destWh._id;
+            if (destWh && !destWh.isSource) query.destinationWarehouse = destWh._id;
         }
 
         // Role-Based Strict Filtering
+        const employeeWhCode = req.user.warehouseCode; // This is populated object
+        
+        // Re-verify it is a populated object not just ID
+        let whIsSource = false;
+        let whId = employeeWhCode._id;
+
+        if (employeeWhCode.isSource !== undefined) {
+                whIsSource = employeeWhCode.isSource;
+        } else {
+                // If not populated for some reason, fetch it
+                const w = await Warehouse.findById(employeeWhCode);
+                if (w) {
+                    whIsSource = w.isSource;
+                    whId = w._id;
+                }
+        }
+
         if (req.user.role !== 'admin') {
-            const employeeWhCode = req.user.warehouseCode; // This is populated object
-            
-            // Re-verify it is a populated object not just ID
-            let whIsSource = false;
-            let whId = employeeWhCode._id;
-
-            if (employeeWhCode.isSource !== undefined) {
-                 whIsSource = employeeWhCode.isSource;
-            } else {
-                 // If not populated for some reason, fetch it
-                 const w = await Warehouse.findById(employeeWhCode);
-                 if (w) {
-                     whIsSource = w.isSource;
-                     whId = w._id;
-                 }
-            }
-
             if (whIsSource) {
                 // Must equal Source
                 query.sourceWarehouse = whId;
@@ -459,9 +452,13 @@ module.exports.allParcel = async (req, res) => {
                     // but good practice if we changed logic above. 
                     // Current logic above sets query.sourceWarehouse = ... (direct assignment), not via $or.
                     // So we can simply add $or here.
-                    query.$or = nameFilter.$or;
+                    query.$and = [
+                        { $or: query.$or }, // Existing OR (e.g. from name search)
+                        { $or: nameFilter.$or } // Our new warehouse constraint
+                    ];
+                    delete query.$or; // Move existing $or to $and
                 } else {
-                    Object.assign(query, nameFilter);
+                    query.$or = nameFilter.$or;
                 }
             }
         }
@@ -473,7 +470,7 @@ module.exports.allParcel = async (req, res) => {
             .limit(PAGE_SIZE);
 
         const totalParcels = await Parcel.countDocuments(query);
-
+        
         return res.status(200).json({ 
             body: {
                 parcels,
