@@ -5,65 +5,69 @@ const { fromDbValue, fromDbValueNum } = require("../utils/currencyUtils.js");
  * Generate a single LR receipt HTML
  * @param {Object} parcel - The parcel data
  * @param {number} auto - 0 for normal (with amounts), 1 for auto (without amounts)
+ * @param {Object} options - Additional options like logoDataUrl
  */
-const generateLR = (parcel, auto = 0) => {
+const generateLR = (parcel, auto = 0, options = {}) => {
+    const { logoDataUrl } = options;
+    
     // Helper to convert DB value to display format
     const displayValue = (dbValue) => fromDbValue(dbValue);
     const displayValueNum = (dbValue) => fromDbValueNum(dbValue);
-
+    
     // Build items table rows
     let index = 1;
     const allItems = parcel.items.map(item => {
-        if (auto == 1) {
+        if (auto === 1 && parcel.payment === 'To Pay') {
             return `
-            <tr>
-                <td>${index++}</td>
-                <td>${item.name} (${item.itemType.name})</td>  
-                <td>${item.quantity}</td>
-            </tr>
+                <tr>
+                    <td>${index++}</td>
+                    <td>${item.name} (${item.itemType.name})</td>
+                    <td>${item.quantity}</td>
+                </tr>
             `;
         } else {
             // Calculate item amount: (freight + hamali + hamali) × quantity
             const itemRate = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
             const itemAmount = itemRate * item.quantity;
             return `
-            <tr>
-                <td>${index++}</td>
-                <td>${item.name}  (${item.itemType.name})</td>  
-                <td>${item.quantity}</td>
-                <td>${`₹${itemAmount.toFixed(2)}`}</td>
-            </tr>
+                <tr>
+                    <td>${index++}</td>
+                    <td>${item.name} (${item.itemType.name})</td>
+                    <td>${item.quantity}</td>
+                    <td>₹${itemAmount.toFixed(2)}</td>
+                </tr>
             `;
         }
     }).join('');
-
+    
     // Calculate totals
-    const totalFreight = displayValueNum(parcel.items.reduce((sum, item) => sum + item.freight, 0));
-    const totalHamali = displayValueNum(parcel.items.reduce((sum, item) => sum + item.hamali, 0));
+    const totalFreight = displayValueNum(parcel.freight);
+    const totalHamali = displayValueNum(parcel.hamali);
     const totalItems = parcel.items.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = totalFreight + 2 * totalHamali;
-
-    let tableHeaders;
-    let totalRow;
-    if (auto == 1) {
+    
+    // Build table headers and total row based on auto mode
+    let tableHeaders = '';
+    let totalRow = '';
+    
+    if (auto === 1 && parcel.payment === 'To Pay') {
         tableHeaders = `
             <tr>
-                <th>S.No.</th>
+                <th>No.</th>
                 <th>Item</th>
                 <th>Qty</th>
             </tr>
         `;
         totalRow = `
             <tr class="total-row">
-                <td colspan="2" style="text-align: right;">Total</td>
+                <td colspan="2">Total</td>
                 <td style="text-align: center;">${totalItems}</td>
             </tr>
         `;
-    } 
-    else {
+    } else {
         tableHeaders = `
             <tr>
-                <th>S.No.</th>
+                <th>No.</th>
                 <th>Item</th>
                 <th>Qty</th>
                 <th>Amount</th>
@@ -71,75 +75,74 @@ const generateLR = (parcel, auto = 0) => {
         `;
         totalRow = `
             <tr class="total-row">
-                <td colspan="2" style="text-align: right;">Total</td>
+                <td colspan="2">Total</td>
                 <td style="text-align: center;">${totalItems}</td>
-                <td style="text-align: center;">₹${totalAmount.toFixed(2)}</td>
+                <td>₹${totalAmount.toFixed(2)}</td>
             </tr>
         `;
     }
-
-    // Door Delivery display logic
-    const doorDeliveryDisplay = parcel.isDoorDelivery
-        ? (auto ? 'Yes' : '₹'+displayValue(parcel.doorDeliveryCharge))
-        : 'No';
-
+    
+    const logoImg = logoDataUrl ? `<img class="logo" src="${logoDataUrl}" />` : '';
+    
     return `
         <div class="lr-receipt">
-            <div class="lr-content">
-                <!-- Header Section -->
-                <div class="header">
-                    <div class="date">Date: ${formatToIST(parcel.placedAt)}</div>
-                    <div class="header-title">
-                        <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
+            <!-- Header Section -->
+            <div class="header">
+                <div class="lr-top-row">
+                    <span class="route-date"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
+                    <span class="lr-no">LR No: ${parcel.trackingId}</span>
+                </div>
+                <div class="header-top-row">
+                    <div class="company-section">
                         <div class="company-name">FRIENDS TRANSPORT CO.</div>
                     </div>
-                    <div class="lr-no">LR No: ${parcel.trackingId}</div>
-                </div>
-                
-                <!-- Top Bar (From/To) in one row -->
-                <div class="route-bar">
-                    <span><strong>From:</strong> ${parcel.sourceWarehouse.name}</span>
-                    <span><strong>To:</strong> ${parcel.destinationWarehouse.name}</span>
-                </div>
-                
-                <!-- Consignor/Consignee in one row -->
-                <div class="consignment-row">
-                    <span><strong>Consignor:</strong> ${parcel.sender.name} <strong>Ph:</strong> ${parcel.sender.phoneNo || "____"}</span>
-                    <span><strong>Consignee:</strong> ${parcel.receiver.name} <strong>Ph:</strong> ${parcel.receiver.phoneNo || "____"}</span>
-                </div>
-                
-                <!-- Data Section: Items Table -->
-                <div class="data-section">
-                    <table class="items-table">
-                        <thead>${tableHeaders}</thead>
-                        <tbody>
-                            ${allItems}
-                            ${totalRow}
-                        </tbody>
-                    </table>
-                    
-                    <!-- Meta Section -->
-                    <div class="meta-section">
-                        <span>Door Delivery: ${doorDeliveryDisplay}</span>
-                        ${auto == 1 ? '' : `<span class="total-value">Total Value: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</span>`}
-                    </div>
-                </div>
-                
-                <!-- Footer Section - always at bottom -->
-                <div class="created-by">
-                    <p style="text-align: right;">Created by: ${parcel.addedBy.name}</p>
                 </div>
             </div>
+            
+            <!-- Route Bar -->
+            <div class="route-bar">
+                <div class="route-from"><strong>From:</strong> ${parcel.sourceWarehouse.name}</div>
+                <div class="route-to"><strong>To:</strong> ${parcel.destinationWarehouse.name}</div>
+            </div>
+            
+            <!-- Consignor/Consignee Section -->
+            <div class="consignment-section">
+                <div class="label"><strong>Consignor:</strong> ${parcel.sender.name}</div>
+                <div class="label"><strong>Phone:</strong> ${parcel.sender.phoneNo || "____"}</div>
+                <hr style="border: none; height: 1px; background-color: black; margin: 1mm 0;">
+                <div class="label"><strong>Consignee:</strong> ${parcel.receiver.name}</div>
+                <div class="label"><strong>Phone:</strong> ${parcel.receiver.phoneNo || "____"}</div>
+            </div>
+            
+            <!-- Items Table -->
+            <table class="items-table ${auto === 1 && parcel.payment === 'To Pay' ? 'auto-table' : 'normal-table'}">
+                <thead>${tableHeaders}</thead>
+                <tbody>
+                    ${allItems}
+                    ${totalRow}
+                </tbody>
+            </table>
+            
+            <!-- Meta Section -->
+            <div class="meta-section">
+                <div class="delivery-row">
+                    <span>Door Delivery: ${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</span>
+                    ${auto === 1 && parcel.payment === 'To Pay' ?  '': `<span class="total-value">Total Value: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</span>`}
+                </div>
+            </div>
+            
+            <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
+            <!-- Created By -->
+            <div class="created-by">Created By: ${parcel.addedBy?.name || "____"}</div>
         </div>
     `;
 };
 
 /**
  * Generate the complete thermal LR sheet with 3 stacked receipts
- * Page dimensions: 77mm width × 175mm height per receipt
- * Text rotated 90 degrees clockwise
+ * Width: 78mm (mandatory), Height: dynamic based on content
  * @param {Object} parcel - The parcel data
- * @param {Object} options - Additional options
+ * @param {Object} options - Additional options like logoDataUrl
  */
 const generateLRSheetThermal = (parcel, options = {}) => {
     return `
@@ -149,178 +152,206 @@ const generateLRSheetThermal = (parcel, options = {}) => {
             <title>FTC LR Receipt</title>
             <style>
                 @page {
-                    size: 115mm 180mm;
+                    size: 78mm auto;
                     margin: 0;
                 }
-
+                
                 * {
                     box-sizing: border-box;
                     margin: 0;
                     padding: 0;
                 }
-
+                
                 body {
-                    width: 77mm;
+                    width: 78mm;
                     margin: 0;
+                    padding: 1mm;
+                    justify-content: center;
                     font-family: Arial, sans-serif;
-                    font-size: 10px;
-                    line-height: 1.1;
+                    line-height: 1.3;
+                    height: auto;
+                    overflow: visible;
+                    display: flex;
+                    flex-direction: column;
                 }
-
-                /* Outer receipt – NO flex centering */
+                
+                /* Each LR Receipt Container */
                 .lr-receipt {
-                    width: 77mm;
-                    height: 175mm;
-                    margin: 2mm;
-                    border: 1px dashed #000;
-                    position: relative;
+                    width: 100%;
+                    border: 2px solid #000;
+                    padding: 2mm;
+                    margin: 1mm;
                     page-break-after: always;
                 }
-
-                /* Rotated content */
-                .lr-content {
-                    width: 175mm;
-                    height: 77mm;
-
-                    padding: 4mm; /* was 4mm */
-
-                    transform: rotate(90deg) translate(0mm, -77mm);
-                    transform-origin: top left;
-
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .lr-content > div {
-                    padding-top: 1mm;
-                    padding-bottom: 1mm;
-                }
-
-
-                /* HEADER */
-                .header {
-                    margin-bottom: 1mm;
-                    display: flex;
+                
+                .lr-receipt:last-child {
+                    margin-bottom: 0;
                 }
                 
-                .date {
-                    flex: 1;
+                /* Header Section */
+                .header {
+                    margin-bottom: 1.5mm;
                 }
 
-                .header-title {
-                    font-size: 13px;
-                    align-items: center;
+                .lr-top-row{
                     display: flex;
-                    flex-direction: column;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 2mm;
+                    margin-bottom: 1mm;
                 }
-
-
-                .jurisdiction {
-                    flex: 2;
+                
+                .header-top-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 2mm;
+                }
+                
+                .company-section {
+                    flex: 1;
                     text-align: center;
-                    text-decoration: underline;
                 }
-
                 
                 .company-name {
-                    font-size: 26px;
+                    font-size: 20px;
                     font-weight: bold;
-                    text-align: center;
-                    margin-top: 0.5mm;
+                    letter-spacing: 0.2px;
+                    margin-bottom: 0.5mm;
                 }
-                    
+
+                .route-date{
+                    font-size: 11px;
+                }
+                
                 .lr-no {
-                    flex: 1;
-                    text-align: right;
-                    font-size: 17px;
+                    font-size: 11px;
                     font-weight: bold;
                 }
                 
-                /* FROM / TO */
+                /* Route Bar */
                 .route-bar {
-                    display: flex;
-                    justify-content: space-between;
+                    font-size: 12px;
+                    padding: 1mm 0;
                     border-top: 1px solid #000;
                     border-bottom: 1px solid #000;
-                    padding: 0.5mm 0;
-                    font-size: 14px;
+                    margin-bottom: 1mm;
                 }
-
-                /* CONSIGNMENT */
-                .consignment-row {
-                    display: flex;
-                    justify-content: space-between;
-                    border-bottom: 1px solid #000;
-                    padding: 0.5mm 0;
-                    font-size: 16px;
-                }
-
-                /* DATA */
-                .data-section {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                /* TABLE */
+                    
+                /* Consignment Section */
+                .consignment-section {
+                    margin-bottom: 1.5mm;
+                    font-size: 12px;
+                }       
+                
+                /* Items Table */
                 .items-table {
+                    width: 100%;
                     border-collapse: collapse;
-                    text-align: center;
-                    font-size: 14px;
-                    width: 98%;
+                    font-size: 10px;
+                    margin-bottom: 1.5mm;
+                    table-layout: fixed;
                 }
-
+                
                 .items-table th,
                 .items-table td {
                     border: 1px solid #000;
-                    padding: 0.5mm;
-                }
-
-                .items-table th {
-                    background: #eee;
+                    padding: 0.8mm;
+                    text-align: center;
+                    word-wrap: break-word;
                 }
                 
-                .items-table td:nth-child(2) { text-align: left; }
-
+                .items-table th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }
+                
+                /* Normal table column widths (4 columns) */
+                .normal-table th:nth-child(1),
+                .normal-table td:nth-child(1) {
+                    width: 12%;
+                }
+                
+                .normal-table th:nth-child(2),
+                .normal-table td:nth-child(2) {
+                    width: 48%;
+                    text-align: left;
+                }
+                
+                .normal-table th:nth-child(3),
+                .normal-table td:nth-child(3) {
+                    width: 15%;
+                }
+                
+                .normal-table th:nth-child(4),
+                .normal-table td:nth-child(4) {
+                    width: 25%;
+                }
+                
+                /* Auto table column widths (3 columns) */
+                .auto-table th:nth-child(1),
+                .auto-table td:nth-child(1) {
+                    width: 15%;
+                }
+                
+                .auto-table th:nth-child(2),
+                .auto-table td:nth-child(2) {
+                    width: 65%;
+                    text-align: left;
+                }
+                
+                .auto-table th:nth-child(3),
+                .auto-table td:nth-child(3) {
+                    width: 20%;
+                }
+                
                 .total-row {
                     font-weight: bold;
-                    background: #eee;
+                    background-color: #f0f0f0;
+                    text-align: center;
                 }
-
-                /* META */
+                
+                /* Meta Section */
                 .meta-section {
+                    margin-bottom: 1mm;
+                }
+                
+                .delivery-row {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 13px;
-                    margin-top: 5px;
-                    }
-                    
-                    .total-value {
+                    align-items: center;
+                    font-size: 10px;
+                    margin-bottom: 0.5mm;
+                }
+                
+                .total-value {
                     font-weight: bold;
-                    font-size: 13px;
+                    font-size: 10px;
                 }
 
-                .created-by {
+                .jurisdiction {
                     width: 100%;
-                    border-top: 1px dotted #999;
-                    margin-top: auto; /* PUSHES FOOTER TO BOTTOM */
+                    font-size: 10px;
+                    text-decoration: underline;
+                    text-align: center;
+                    align-self: center;
+                    margin-bottom: 0.5mm;
+                    border-top: 1px solid #999;
+                    margin-top: 1mm;
                     padding-top: 0.5mm;
+                }
+                
+                /* Created By */
+                .created-by {
                     text-align: right;
-                    font-size: 12px;
+                    font-size: 9px;
                 }
-
-                @media print {
-                    body {
-                        width: 77mm;
-                    }
-                }
-
             </style>
         </head>
         <body>
-            ${generateLR(parcel)}
-            ${generateLR(parcel)}
-            ${generateLR(parcel,1)}
+            ${generateLR(parcel, 0, options)}
+            ${generateLR(parcel, 0, options)}
+            ${generateLR(parcel, 1, options)}
             <!-- End of file marker for thermal printer -->
             <div style="page-break-after: always; break-after: page;"></div>
         </body>
