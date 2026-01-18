@@ -678,15 +678,25 @@ module.exports.editLedger = async (req, res) => {
 module.exports.verifyLedger = async(req, res) => {
     try {
         const { id } = req.params;
-
+        let parcelsList = new Set(req.body.parcels);
         let ledger=await Ledger.findOne({ledgerId:id});
 
-        for(let id of ledger.parcels){
+        if (!ledger) {
+            return res.status(404).json({ message: `Can't find any Ledger with ID ${id}`,flag:false });
+        }
+
+        let actualParcels=ledger.parcels;
+        for(let id of actualParcels){
+            if (!parcelsList.has(id.toString())) {
+                continue;
+            }
             const parcel= await Parcel.findById(id);
+            if (!parcel) {
+                continue;
+            }
             parcel.status='delivered';
             await parcel.save();
         }
-
         ledger.status='completed';
         ledger.deliveredAt = getNow();
         ledger.verifiedByDest=req.user._id;
