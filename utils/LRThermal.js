@@ -50,10 +50,12 @@ const generateLR = (parcel, auto = 0, options = {}) => {
         <div class="lr-receipt">
             <div class="header">
                 <div class="top-row">
-                    <span><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
-                    <span><strong>LR No:</strong> ${parcel.trackingId}</span>
+                    <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
+                    <span style="white-space: nowrap;"><strong>LR No:</strong> ${parcel.trackingId}</span>
                 </div>
                 <div class="company-name">FRIENDS TRANSPORT CO.</div>
+                <div class="source-phone">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
+                <div class="website">www.friendstransport.in</div>
             </div>
             
             <div class="route-bar">
@@ -62,8 +64,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             </div>
             
             <div class="party-section">
-                <div><strong>Consignor:</strong> ${parcel.sender.name} &nbsp; <strong>Ph:</strong> ${parcel.sender.phoneNo || "NA"}</div>
-                <div><strong>Consignee:</strong> ${parcel.receiver.name} &nbsp; <strong>Ph:</strong> ${parcel.receiver.phoneNo || "NA"}</div>
+                <div><strong>Consignor:</strong> ${parcel.sender.name}</div>
+                <div><strong>Ph:</strong> ${parcel.sender.phoneNo || "NA"}</div>
+                <div><strong>Consignee:</strong> ${parcel.receiver.name}</div>
+                <div><strong>Ph:</strong> ${parcel.receiver.phoneNo || "NA"}</div>
             </div>
             
             <table class="items-table ${auto === 1 && parcel.payment === 'To Pay' ? 'auto-table' : 'normal-table'}">
@@ -76,13 +80,11 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     <span>Door Delivery: ${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</span>
                     ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</strong></span>`}
                 </div>
-                <div class="bottom-info">
-                    <div>Source Ph: ${parcel.sourceWarehouse.phoneNo || "24604381"}</div>
-                    <div>GST: 36AAFFF2744R1ZX</div>
-                </div>
+                <div class="gst-center">GST: 36AAFFF2744R1ZX</div>
                 <div class="created-by">Created By: ${parcel.addedBy?.name || "____"}</div>
                 <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
+            <div class="cut-line"></div>
         </div>
     `;
 };
@@ -94,17 +96,42 @@ const generateLRSheetThermal = (parcel, options = {}) => {
         <head>
             <title>FTC LR Receipt</title>
             <style>
-                @page { size: 78mm auto; margin: 0; }
+                @page { 
+                    size: 78mm auto; 
+                    margin: 0; 
+                }
+                @media print {
+                    .lr-receipt {
+                        page-break-after: always;
+                        break-after: page;
+                    }
+                    .lr-receipt:last-child {
+                        page-break-after: auto;
+                        break-after: auto;
+                    }
+                }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
-                body { width: 78mm; margin: 0; padding: 1mm 0; font-family: Arial, sans-serif; line-height: 1.3; }
+                body { width: 78mm; margin: 0; padding: 1mm 0; font-family: 'Consolas', 'Monaco', 'Lucida Console', monospace; line-height: 1.3; }
                 
-                .lr-receipt { width: 100%; padding: 2mm 0; margin-bottom: 2mm; page-break-after: always; }
-                .lr-receipt:last-child { margin-bottom: 0; }
+                .lr-receipt { 
+                    width: 100%; 
+                    padding: 2mm 0; 
+                    margin-bottom: 0; 
+                    page-break-after: always;
+                    break-after: page;
+                }
+                .lr-receipt:last-child { 
+                    margin-bottom: 0; 
+                    page-break-after: auto;
+                    break-after: auto;
+                }
                 
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
-                .top-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 1mm; }
+                .top-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 1mm; flex-wrap: nowrap; }
                 .company-name { font-size: 20px; font-weight: bold; text-align: center; letter-spacing: 0.3px; }
+                .source-phone { font-size: 11px; text-align: center; margin-top: 0.5mm; }
+                .website { font-size: 11px; text-align: center; margin-top: 0.3mm; }
                 
                 /* Route Bar */
                 .route-bar { 
@@ -147,14 +174,22 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 /* Footer Info */
                 .footer-info { font-size: 12px; }
                 .delivery-row { display: flex; justify-content: space-between; margin-bottom: 1mm; }
-                .bottom-info { 
-                    display: flex; 
-                    justify-content: space-between; 
+                .gst-center { 
+                    text-align: center; 
                     font-size: 11px;
                     margin-bottom: 0.5mm;
                 }
                 .jurisdiction { text-align: center; margin-bottom: 0.5mm; }
-                .created-by { text-align: right; font-size: 11px; }
+                .created-by { text-align: center; font-size: 11px; }
+                
+                /* Cut Line */
+                .cut-line { 
+                    height: 0; 
+                    margin: 0;
+                    padding: 0;
+                    page-break-after: always;
+                    break-after: page;
+                }
             </style>
         </head>
         <body>
