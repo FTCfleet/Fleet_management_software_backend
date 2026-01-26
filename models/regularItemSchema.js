@@ -12,13 +12,13 @@ const regularItemSchema= new mongoose.Schema({
     },
     freight:{
         type: Number,
-        required: true,
-        default: 0
+        required: false,
+        default: null
     },
     hamali:{
         type: Number,
-        required: true,
-        default: 0
+        required: false,
+        default: null
     }
 });
 

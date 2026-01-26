@@ -11,16 +11,35 @@ const authenticateToken = async (req, res, next) => {
         }
 
         const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET);
+        
+        // Check if token has expired (JWT library will throw error if expired)
         const user = await Employee.findById(decoded.id).populate('warehouseCode');
         
         if (!user) {
             throw new Error('User not found');
         }
         
+        // Check if password was changed after token was issued
+        if (user.passwordChangedAt) {
+            const passwordChangedTime = user.passwordChangedAt.getTime();
+            const tokenPasswordTime = decoded.passwordChangedAt || 0;
+            
+            if (passwordChangedTime > tokenPasswordTime) {
+                return res.status(201).json({ 
+                    message: 'Password was changed. Please login again', 
+                    flag: false,
+                    passwordChanged: true
+                });
+            }
+        }
+        
         req.user = user;
         next();
     } catch (error) {
-        return res.status(201).json({ message: 'Please authenticate' , flag: false});
+        if (error.name === 'TokenExpiredError') {
+            return res.status(201).json({ message: 'Session expired. Please login again', flag: false });
+        }
+        return res.status(201).json({ message: 'Please authenticate', flag: false });
     }
 };
 

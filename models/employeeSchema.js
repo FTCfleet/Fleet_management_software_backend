@@ -28,12 +28,21 @@ const employeeSchema = new mongoose.Schema({
         type: String,
         enum: ['admin', 'supervisor', 'staff'],
         required: true
+    },
+    passwordChangedAt: {
+        type: Date,
+        default: null
     }
 });
 
 employeeSchema.pre('save', async function(next) {
     if (this.isModified('password')) {
         this.password = await bcrypt.hash(this.password, 10);
+        // Update passwordChangedAt timestamp when password is changed
+        // Don't set it on initial registration (when it's a new document)
+        if (!this.isNew) {
+            this.passwordChangedAt = Date.now();
+        }
     }
     next();
 });

@@ -18,7 +18,10 @@ module.exports.register = async (req, res) => {
 
         await employee.save();
         
-        const token = jsonwebtoken.sign({ id: employee._id }, process.env.JWT_SECRET);
+        const token = jsonwebtoken.sign({ 
+            id: employee._id,
+            passwordChangedAt: employee.passwordChangedAt ? employee.passwordChangedAt.getTime() : null
+        }, process.env.JWT_SECRET, { expiresIn: '48h' });
         return res.status(201).json({ token ,flag:true});
     } catch (error) {
         return res.status(400).json({ message: error.message,flag:false });
@@ -34,7 +37,10 @@ module.exports.changePassword = async (req, res) => {
         }
         employee.password = newPassword;
         await employee.save();
-        const token = jsonwebtoken.sign({ id: employee._id }, process.env.JWT_SECRET);
+        const token = jsonwebtoken.sign({ 
+            id: employee._id,
+            passwordChangedAt: employee.passwordChangedAt ? employee.passwordChangedAt.getTime() : null
+        }, process.env.JWT_SECRET, { expiresIn: '48h' });
         return res.status(201).json({ token, flag: true});
     }
     catch (error) {
@@ -60,7 +66,10 @@ module.exports.login= async (req, res) => {
             return res.status(403).json({message: "Only admin and supervisor can access website", flag: false});
         }
 
-        const token = jsonwebtoken.sign({ id: employee._id }, process.env.JWT_SECRET);
+        const token = jsonwebtoken.sign({ 
+            id: employee._id,
+            passwordChangedAt: employee.passwordChangedAt ? employee.passwordChangedAt.getTime() : null
+        }, process.env.JWT_SECRET, { expiresIn: '48h' });
         res.status(200).json({ flag:true, token });
 
     } catch (err) {

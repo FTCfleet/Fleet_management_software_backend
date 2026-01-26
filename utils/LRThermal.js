@@ -5,6 +5,15 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     const displayValue = (dbValue) => fromDbValue(dbValue);
     const displayValueNum = (dbValue) => fromDbValueNum(dbValue);
     
+    // Helper to display value or blank space for zero/null
+    const displayOrBlank = (dbValue) => {
+        if (dbValue === null || dbValue === undefined || dbValue === 0) {
+            return '____';
+        }
+        const num = fromDbValueNum(dbValue);
+        return num === 0 ? '____' : `₹${num.toFixed(2)}`;
+    };
+    
     // Build items table rows
     let index = 1;
     const allItems = parcel.items.map(item => {
@@ -19,12 +28,13 @@ const generateLR = (parcel, auto = 0, options = {}) => {
         } else {
             const itemRate = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
             const itemAmount = itemRate * item.quantity;
+            const displayAmount = itemAmount === 0 ? '____' : `₹${itemAmount.toFixed(2)}`;
             return `
                 <tr>
                     <td>${index++}</td>
                     <td>${item.name} (${item.itemType.name})</td>
                     <td>${item.quantity}</td>
-                    <td>₹${itemAmount.toFixed(2)}</td>
+                    <td>${displayAmount}</td>
                 </tr>
             `;
         }
@@ -35,6 +45,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     const totalItems = parcel.items.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = totalFreight + 2 * totalHamali;
     
+    // Display total as blank if zero
+    const displayTotalAmount = totalAmount === 0 ? '____' : `₹${totalAmount.toFixed(2)}`;
+    
     let tableHeaders = '';
     let totalRow = '';
     
@@ -43,7 +56,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
         totalRow = `<tr class="total-row"><td colspan="2">Total</td><td>${totalItems}</td></tr>`;
     } else {
         tableHeaders = `<tr><th>No.</th><th>Item</th><th>Qty</th><th>Amount</th></tr>`;
-        totalRow = `<tr class="total-row"><td colspan="2">Total</td><td>${totalItems}</td><td>₹${totalAmount.toFixed(2)}</td></tr>`;
+        totalRow = `<tr class="total-row"><td colspan="2">Total</td><td>${totalItems}</td><td>${displayTotalAmount}</td></tr>`;
     }
     
     return `
@@ -78,7 +91,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="footer-info">
                 <div class="delivery-row">
                     <span>Door Delivery: ${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</span>
-                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</strong></span>`}
+                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ${displayTotalAmount} (${parcel.payment.toUpperCase()})</strong></span>`}
                 </div>
                 <div class="gst-center">GST: 36AAFFF2744R1ZX</div>
                 <div class="created-by">Created By: ${parcel.addedBy?.name || "____"}</div>
@@ -128,14 +141,14 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
-                .top-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 1mm; flex-wrap: nowrap; }
-                .company-name { font-size: 20px; font-weight: bold; text-align: center; letter-spacing: 0.3px; }
-                .source-phone { font-size: 11px; text-align: center; margin-top: 0.5mm; }
-                .website { font-size: 11px; text-align: center; margin-top: 0.3mm; }
+                .top-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; }
+                .company-name { font-size: 18px; font-weight: bold; text-align: center; letter-spacing: 0.3px; }
+                .source-phone { font-size: 9px; text-align: center; margin-top: 0.5mm; }
+                .website { font-size: 9px; text-align: center; margin-top: 0.3mm; }
                 
                 /* Route Bar */
                 .route-bar { 
-                    font-size: 13px; 
+                    font-size: 11px; 
                     padding: 1mm 0; 
                     margin-bottom: 1mm; 
                 }
@@ -143,14 +156,14 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 .route-bar div:last-child { margin-bottom: 0; }
                 
                 /* Party Section */
-                .party-section { font-size: 13px; margin-bottom: 1.5mm; }
+                .party-section { font-size: 11px; margin-bottom: 1.5mm; }
                 .party-section div { margin-bottom: 0.5mm; }
                 
                 /* Items Table */
                 .items-table { 
                     width: 100%; 
                     border-collapse: collapse; 
-                    font-size: 12px; 
+                    font-size: 10px; 
                     margin-bottom: 1.5mm; 
                 }
                 .items-table th, .items-table td { padding: 0.8mm; text-align: center; }
@@ -172,15 +185,15 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 .total-row { font-weight: bold; border-top: 1px dashed #000 !important; }
                 
                 /* Footer Info */
-                .footer-info { font-size: 12px; }
+                .footer-info { font-size: 10px; }
                 .delivery-row { display: flex; justify-content: space-between; margin-bottom: 1mm; }
                 .gst-center { 
                     text-align: center; 
-                    font-size: 11px;
+                    font-size: 9px;
                     margin-bottom: 0.5mm;
                 }
                 .jurisdiction { text-align: center; margin-bottom: 0.5mm; }
-                .created-by { text-align: center; font-size: 11px; }
+                .created-by { text-align: center; font-size: 9px; }
                 
                 /* Cut Line */
                 .cut-line { 

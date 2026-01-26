@@ -13,10 +13,19 @@
  * Convert display decimal value to database integer value
  * Use this when SAVING data from frontend
  * @param {string|number} displayValue - Decimal value from user input (e.g., "125.50" or 125.5)
- * @returns {number} - Integer value for database (e.g., 12550)
+ * @returns {number|null} - Integer value for database (e.g., 12550) or null if empty
  */
 const toDbValue = (displayValue) => {
-    const num = parseFloat(displayValue) || 0;
+    // Handle null, undefined, empty string, or whitespace
+    if (displayValue === null || displayValue === undefined || displayValue === '' || 
+        (typeof displayValue === 'string' && displayValue.trim() === '')) {
+        return null;
+    }
+    const num = parseFloat(displayValue);
+    // If parsing fails or results in NaN, return null
+    if (isNaN(num)) {
+        return null;
+    }
     // Round to avoid floating point errors, then multiply by 100
     return Math.round(num * 100);
 };
@@ -24,20 +33,26 @@ const toDbValue = (displayValue) => {
 /**
  * Convert database integer value to display decimal value
  * Use this when FETCHING data for display (e.g., PDFs, reports)
- * @param {number} dbValue - Integer value from database (e.g., 12550)
- * @returns {string} - Formatted decimal string (e.g., "125.50")
+ * @param {number|null} dbValue - Integer value from database (e.g., 12550) or null
+ * @returns {string} - Formatted decimal string (e.g., "125.50") or empty string if null
  */
 const fromDbValue = (dbValue) => {
+    if (dbValue === null || dbValue === undefined) {
+        return '';
+    }
     const num = Number(dbValue) || 0;
     return (num / 100).toFixed(2);
 };
 
 /**
  * Convert database integer value to number for calculations
- * @param {number} dbValue - Integer value from database
- * @returns {number} - Decimal number for calculations
+ * @param {number|null} dbValue - Integer value from database or null
+ * @returns {number} - Decimal number for calculations (0 if null)
  */
 const fromDbValueNum = (dbValue) => {
+    if (dbValue === null || dbValue === undefined) {
+        return 0;
+    }
     const num = Number(dbValue) || 0;
     return num / 100;
 };

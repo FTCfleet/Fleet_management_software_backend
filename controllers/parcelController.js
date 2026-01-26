@@ -269,8 +269,9 @@ module.exports.newParcel = async (req, res) => {
             });
             const savedItem = await newItem.save();
             itemEntries.push(savedItem._id);
-            totalFreight += freightDb * item.quantity;
-            totalHamali += hamaliDb * item.quantity;
+            // Only add to totals if values are not null
+            totalFreight += (freightDb || 0) * item.quantity;
+            totalHamali += (hamaliDb || 0) * item.quantity;
         }
 
         await Promise.all([
@@ -553,17 +554,31 @@ module.exports.getParcelsForMemo = async (req, res) => {
             status: 'arrived'
         };
 
-        // Source warehouse filter
+        // Source warehouse filter - now supports multiple warehouses
         const { src } = req.query;
         if (src && src !== 'all') {
-            const srcWh = await Warehouse.findOne({ warehouseID: src });
-            if (!srcWh) {
+            // Check if src is a comma-separated list of warehouse IDs
+            const srcArray = src.includes(',') ? src.split(',').map(s => s.trim()) : [src];
+            
+            // Find all matching warehouses
+            const srcWarehouses = await Warehouse.find({ warehouseID: { $in: srcArray } });
+            
+            if (srcWarehouses.length === 0) {
                 return res.status(404).json({ 
-                    message: `Source Warehouse with ID ${src} not found`, 
+                    message: `No source warehouses found for IDs: ${src}`, 
                     flag: false 
                 });
             }
-            query.sourceWarehouse = srcWh._id;
+            
+            // If some IDs were not found, you might want to warn (optional)
+            if (srcWarehouses.length !== srcArray.length) {
+                const foundIds = srcWarehouses.map(w => w.warehouseID);
+                const notFound = srcArray.filter(id => !foundIds.includes(id));
+                console.warn(`Warning: Some warehouse IDs not found: ${notFound.join(', ')}`);
+            }
+            
+            // Filter by multiple source warehouses
+            query.sourceWarehouse = { $in: srcWarehouses.map(w => w._id) };
         }
 
         // Role-based filtering (non-admin users)
@@ -571,8 +586,7 @@ module.exports.getParcelsForMemo = async (req, res) => {
             const employeeWhCode = req.user.warehouseCode;
             let whId = employeeWhCode._id;
 
-            // Ensure employee's warehouse matches source (for source warehouses)
-            // or destination (for destination warehouses)
+            // Get warehouse details
             let whIsSource = employeeWhCode.isSource;
             if (whIsSource === undefined) {
                 const w = await Warehouse.findById(employeeWhCode);
@@ -582,10 +596,16 @@ module.exports.getParcelsForMemo = async (req, res) => {
                 }
             }
 
-            if (whIsSource) {
-                query.sourceWarehouse = whId;
-            } else {
+            // For destination warehouse staff, they can see parcels from any source
+            // going to their destination (this allows them to create memos)
+            if (!whIsSource) {
+                // Destination warehouse staff - restrict by destination only
                 query.destinationWarehouse = whId;
+                // They can select any source warehouse(s) or 'all'
+            } else {
+                // Source warehouse staff - restrict to their source warehouse
+                // If multi-warehouse was requested, restrict to only their warehouse
+                query.sourceWarehouse = whId;
             }
         }
 
@@ -700,12 +720,11 @@ module.exports.generateLR = async (req, res) => {
                 headless: chromium.headless,
             };
         } else {
-            // Local development — use installed full Puppeteer
-            const puppeteerLocal = require('puppeteer');
+            // Local development — use system Chrome
             launchOptions = {
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                executablePath: puppeteerLocal.executablePath(),
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
             };
         }
 
@@ -775,19 +794,18 @@ module.exports.generateLRThermal = async (req, res) => {
         };
 
         if (process.env.RENDER) {
-            // Render environment ΓÇö use @sparticuz/chromium
+            // Render environment — use @sparticuz/chromium
             launchOptions = {
                 args: chromium.args,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
             };
         } else {
-            // Local development ΓÇö use installed full Puppeteer
-            const puppeteerLocal = require('puppeteer');
+            // Local development — use system Chrome
             launchOptions = {
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                executablePath: puppeteerLocal.executablePath(),
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
             };
         }
 
@@ -947,8 +965,8 @@ module.exports.editParcel = async (req, res) => {
 
         // Recalculate freight and hamali from all items
         const allItems = await Item.find({ _id: { $in: parcel.items } });
-        parcel.freight = allItems.reduce((acc, item) => acc + (item.freight*item.quantity || 0), 0);
-        parcel.hamali = allItems.reduce((acc, item) => acc + (item.hamali*item.quantity || 0), 0);
+        parcel.freight = allItems.reduce((acc, item) => acc + ((item.freight || 0) * item.quantity), 0);
+        parcel.hamali = allItems.reduce((acc, item) => acc + ((item.hamali || 0) * item.quantity), 0);
 
         if( updateData.payment) {
             parcel.payment = updateData.payment;

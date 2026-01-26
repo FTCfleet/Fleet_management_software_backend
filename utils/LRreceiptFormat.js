@@ -9,6 +9,15 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     const displayValue = (dbValue) => fromDbValue(dbValue);
     const displayValueNum = (dbValue) => fromDbValueNum(dbValue);
     
+    // Helper to display value or blank space for zero/null
+    const displayOrBlank = (dbValue) => {
+        if (dbValue === null || dbValue === undefined || dbValue === 0) {
+            return '____';
+        }
+        const num = fromDbValueNum(dbValue);
+        return num === 0 ? '____' : `₹${num.toFixed(2)}`;
+    };
+    
     let allitems = parcel.items.map(item => {
         if (auto == 1) {
             return `
@@ -22,12 +31,13 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             // Calculate item amount: (freight + hamali + hamali) × quantity
             const itemRate = displayValueNum(item.freight) + displayValueNum(item.hamali) + displayValueNum(item.hamali);
             const itemAmount = itemRate * item.quantity;
+            const displayAmount = itemAmount === 0 ? '____' : `₹${itemAmount.toFixed(2)}`;
             return `
             <tr>
                 <td>${index++}</td>
                 <td>${item.name}  (${item.itemType.name})</td>  
                 <td>${item.quantity}</td>
-                <td>${`₹${itemAmount.toFixed(2)}`}</td>
+                <td>${displayAmount}</td>
             </tr>
             `;
         }
@@ -37,6 +47,9 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     let totalHamali = displayValueNum(parcel.hamali);
     let totalItems = parcel.items.reduce((sum, item) => sum + item.quantity, 0);
     let totalAmount = totalFreight + 2*totalHamali;
+    
+    // Display total as blank if zero
+    const displayTotalAmount = totalAmount === 0 ? '____' : `₹${totalAmount.toFixed(2)}`;
 
     let tableHeaders = '';
     let totalRow = '';
@@ -68,7 +81,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <tr class="total-row">
                 <td colspan="2">Total</td>
                 <td>${totalItems}</td>
-                <td>₹${totalAmount.toFixed(2)}</td>
+                <td>${displayTotalAmount}</td>
             </tr>
             `;
     }
@@ -127,7 +140,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     </table>
                     <div style="display: flex; justify-content: space-between;">
                         <div style="text-align: left;">Door Delivery: ${parcel.isDoorDelivery ? auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge) : 'No'}</div>
-                        ${auto == 0 ? `<div class="total-value">Total Value: ₹${totalAmount.toFixed(2)} (${parcel.payment.toUpperCase()})</div>` : ''}
+                        ${auto == 0 ? `<div class="total-value">Total Value: ${displayTotalAmount} (${parcel.payment.toUpperCase()})</div>` : ''}
                     </div>
                     <div class="meta">
                         <span>Goods are at owner's risk</span>
