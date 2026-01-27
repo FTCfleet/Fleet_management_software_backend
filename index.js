@@ -25,6 +25,7 @@ const ledgerRoutes = require("./routes/ledgerRoutes.js");
 const driverRoutes = require("./routes/driverRoutes.js");
 const serviceEnquiryRoutes = require("./routes/serviceEnquiryRoutes.js");
 const analyticsRoutes = require("./routes/analyticsRoutes.js");
+const paymentTrackingRoutes = require("./routes/paymentTrackingRoutes.js");
 // const backupRoutes = require("./routes/backupRoutes.js");
 
 mongoose.connect(dbUrl);
@@ -54,6 +55,7 @@ app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/service-enquiry', serviceEnquiryRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/payment-tracking', paymentTrackingRoutes);
 // app.use('/api/backup', backupRoutes);
 
 /*

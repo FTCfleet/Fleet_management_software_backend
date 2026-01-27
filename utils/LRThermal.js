@@ -53,10 +53,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     
     if (auto === 1 && parcel.payment === 'To Pay') {
         tableHeaders = `<tr><th>No.</th><th>Item</th><th>Qty</th></tr>`;
-        totalRow = `<tr class="total-row"><td colspan="2">Total</td><td>${totalItems}</td></tr>`;
+        totalRow = `<tr class="total-row"><td></td><td>Total</td><td>${totalItems}</td></tr>`;
     } else {
         tableHeaders = `<tr><th>No.</th><th>Item</th><th>Qty</th><th>Amount</th></tr>`;
-        totalRow = `<tr class="total-row"><td colspan="2">Total</td><td>${totalItems}</td><td>${displayTotalAmount}</td></tr>`;
+        totalRow = `<tr class="total-row"><td></td><td>Total</td><td>${totalItems}</td><td>${displayTotalAmount}</td></tr>`;
     }
     
     return `
@@ -66,9 +66,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
                     <span style="white-space: nowrap;"><strong>LR No:</strong> ${parcel.trackingId}</span>
                 </div>
-                <div class="company-name">FRIENDS TRANSPORT CO.</div>
-                <div class="source-phone">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
-                <div class="website">www.friendstransport.in</div>
+                <div class="company-name" style="margin-left: -15px;">FRIENDS TRANSPORT CO.</div>
+                <div class="source-phone" style="margin-left: -15px;">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
+                <div class="dest-phone-top" style="margin-left: -15px;">${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</div>
+                <div class="website" style="margin-left: -15px;">www.friendstransport.in</div>
             </div>
             
             <div class="route-bar">
@@ -90,12 +91,12 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             
             <div class="footer-info">
                 <div class="delivery-row">
-                    <span>Door Delivery: ${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</span>
-                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ${displayTotalAmount} (${parcel.payment.toUpperCase()})</strong></span>`}
+                    <span>Door Delivery: <strong>${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</strong></span>
+                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ${displayTotalAmount}<span style="font-size: 8px">(${parcel.payment.toUpperCase()})</span></strong></span>`}
                 </div>
-                <div class="gst-center">GST: 36AAFFF2744R1ZX</div>
-                <div class="created-by">Created By: ${parcel.addedBy?.name || "____"}</div>
-                <div class="jurisdiction">SUBJECT TO HYDERABAD JURISDICTION</div>
+                <div class="gst-center" style="margin-left: -15px;">GST: 36AAFFF2744R1ZX</div>
+                <div class="created-by" style="margin-left: -15px;">Created By: ${parcel.addedBy?.name || "____"}</div>
+                <div class="jurisdiction" style="margin-left: -15px;">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
             <div class="cut-line"></div>
         </div>
@@ -124,7 +125,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     }
                 }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
-                body { width: 78mm; margin: 0; padding: 1mm 0; font-family: 'Consolas', 'Monaco', 'Lucida Console', monospace; line-height: 1.3; }
+                body { width: 78mm; margin: 0; padding: 1mm 0; font-family: 'Courier New', 'Courier', monospace; line-height: 1.3; }
                 
                 .lr-receipt { 
                     width: 100%; 
@@ -141,9 +142,10 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
-                .top-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; }
-                .company-name { font-size: 18px; font-weight: bold; text-align: center; letter-spacing: 0.3px; }
+                .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 30px; }
+                .company-name { font-size: 16px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
                 .source-phone { font-size: 9px; text-align: center; margin-top: 0.5mm; }
+                .dest-phone-top { font-size: 9px; text-align: center; margin-top: 0.3mm; }
                 .website { font-size: 9px; text-align: center; margin-top: 0.3mm; }
                 
                 /* Route Bar */
@@ -161,32 +163,32 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 
                 /* Items Table */
                 .items-table { 
-                    width: 100%; 
+                    width: calc(100% - 30px); 
+                    margin: 0 0 1.5mm 0;
                     border-collapse: collapse; 
                     font-size: 10px; 
-                    margin-bottom: 1.5mm; 
                 }
-                .items-table th, .items-table td { padding: 0.8mm; text-align: center; }
+                .items-table th, .items-table td { padding: 0.8mm; text-align: center; vertical-align: middle; }
                 .items-table th { font-weight: bold; border-bottom: 1px dashed #000; }
                 .items-table tbody tr { }
                 .items-table tbody tr:last-child { border-bottom: none; }
                 
                 /* Column widths - Normal (4 columns) */
-                .normal-table th:nth-child(1), .normal-table td:nth-child(1) { width: 10%; }
-                .normal-table th:nth-child(2), .normal-table td:nth-child(2) { width: 50%; text-align: left; }
-                .normal-table th:nth-child(3), .normal-table td:nth-child(3) { width: 15%; }
-                .normal-table th:nth-child(4), .normal-table td:nth-child(4) { width: 25%; }
+                .normal-table th:nth-child(1), .normal-table td:nth-child(1) { width: 10%; text-align: center; }
+                .normal-table th:nth-child(2), .normal-table td:nth-child(2) { width: 45%; text-align: left; }
+                .normal-table th:nth-child(3), .normal-table td:nth-child(3) { width: 15%; text-align: center; }
+                .normal-table th:nth-child(4), .normal-table td:nth-child(4) { width: 30%; text-align: right; padding-right: 2mm; }
                 
                 /* Column widths - Auto (3 columns) */
-                .auto-table th:nth-child(1), .auto-table td:nth-child(1) { width: 12%; }
-                .auto-table th:nth-child(2), .auto-table td:nth-child(2) { width: 68%; text-align: left; }
-                .auto-table th:nth-child(3), .auto-table td:nth-child(3) { width: 20%; }
+                .auto-table th:nth-child(1), .auto-table td:nth-child(1) { width: 12%; text-align: center; }
+                .auto-table th:nth-child(2), .auto-table td:nth-child(2) { width: 63%; text-align: left; }
+                .auto-table th:nth-child(3), .auto-table td:nth-child(3) { width: 25%; text-align: center; }
                 
-                .total-row { font-weight: bold; border-top: 1px dashed #000 !important; }
+                .total-row { font-weight: bold; border-top: 1px dashed #000 !important;}
                 
                 /* Footer Info */
                 .footer-info { font-size: 10px; }
-                .delivery-row { display: flex; justify-content: space-between; margin-bottom: 1mm; }
+                .delivery-row { display: flex; margin-bottom: 1mm; gap: 25px }
                 .gst-center { 
                     text-align: center; 
                     font-size: 9px;

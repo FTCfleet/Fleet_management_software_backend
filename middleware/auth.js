@@ -81,4 +81,4 @@ const verifyOTPToken = async (req, res, next) => {
     }
 };
 
-module.exports = { authenticateToken, isAdmin, isSupervisor, isAppUser, verifyOTPToken };
+module.exports = { authenticateToken, isAdmin, isSupervisor, isAppUser, verifyOTPToken, protect: authenticateToken };

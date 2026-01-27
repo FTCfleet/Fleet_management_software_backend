@@ -4,6 +4,7 @@ const Client = require("../models/clientSchema.js");
 const RegularClient = require("../models/regularClientSchema.js");
 const RegularItem = require("../models/regularItemSchema.js");
 const Item = require("../models/itemSchema.js");
+const PaymentTracking = require("../models/paymentTrackingSchema.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const { generateLRSheetThermal } = require("../utils/LRThermal.js");
@@ -306,6 +307,14 @@ module.exports.newParcel = async (req, res) => {
         // console.log(newParcel.placedAt);
 
         await newParcel.save();
+
+        // Create payment tracking entry if payment is "To Pay"
+        if (payment === 'To Pay') {
+            await PaymentTracking.create({
+                parcel: newParcel._id,
+                paymentStatus: 'To Pay'
+            });
+        }
 
         return res.status(200).json({ message: "Parcel created successfully", body: trackingId, flag: true });
 

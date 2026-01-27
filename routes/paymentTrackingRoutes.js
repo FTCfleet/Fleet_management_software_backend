@@ -1,0 +1,15 @@
+const express = require('express');
+const router = express.Router();
+const paymentTrackingController = require('../controllers/paymentTrackingController.js');
+const { protect } = require('../middleware/auth.js');
+
+// Get all To Pay parcels (with optional date filter)
+router.get('/', protect, paymentTrackingController.getToPayParcels);
+
+// Mark payment as received
+router.patch('/:parcelId/received', protect, paymentTrackingController.markPaymentReceived);
+
+// Mark payment as To Pay (undo)
+router.patch('/:parcelId/topay', protect, paymentTrackingController.markPaymentToPay);
+
+module.exports = router;
