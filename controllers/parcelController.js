@@ -612,9 +612,16 @@ module.exports.getParcelsForMemo = async (req, res) => {
                 query.destinationWarehouse = whId;
                 // They can select any source warehouse(s) or 'all'
             } else {
-                // Source warehouse staff - restrict to their source warehouse
-                // If multi-warehouse was requested, restrict to only their warehouse
-                query.sourceWarehouse = whId;
+                // Source warehouse staff - they can see parcels from any source going to any destination
+                // BUT if they didn't specify 'all' or multiple sources, default to their warehouse
+                if (!src || (src !== 'all' && !src.includes(','))) {
+                    // If no source specified or single source (not 'all'), allow their selection
+                    // but if no source filter was applied above, default to their warehouse
+                    if (!query.sourceWarehouse) {
+                        query.sourceWarehouse = whId;
+                    }
+                }
+                // If they selected 'all' or multiple sources, let the above logic handle it
             }
         }
 
