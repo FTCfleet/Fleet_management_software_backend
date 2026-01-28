@@ -64,13 +64,14 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="header">
                 <div class="top-row">
                     <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
+                    <span style="white-space: nowrap;"><strong>Created By:</strong> ${parcel.addedBy?.name || "____"}</span>
                 </div>
-                <div class="lr-number"><strong>LR No:</strong> ${parcel.trackingId}</div>
-                <div class="company-name" style="margin-left: -12px;">FRIENDS TRANSPORT CO.</div>
-                <div class="source-phone" style="margin-left: -27px;">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
-                <div class="dest-phone-top" style="margin-left: -27px; margin-bottom: 3px;">${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</div>
-                <div class="website" style="margin-left: -27px;">Track your order at</div>
-                <div class="website" style="margin-left: -27px; font-weight: bold;">www.friendstransport.in</div>
+                <div class="company-name" style="margin-left: -19px;">FRIENDS TRANSPORT CO.</div>
+                <div class="phone-row" style="margin-top: 3px;">
+                    <span>${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</span>
+                    <span>${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</span>
+                </div>
+                <div class="website" style="margin-left: -56px; margin-top: 3px;">Track your order at: <strong>www.friendstransport.in</strong></div>
             </div>
             
             <div class="route-bar">
@@ -96,7 +97,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span>Payment: <strong>${parcel.payment.toUpperCase()}</strong></span>`}
                 </div>
                 <div class="gst-center" style="margin-left: -27px;">GST: 36AAFFF2744R1ZX</div>
-                <div class="created-by" style="margin-left: -27px;">Created By: ${parcel.addedBy?.name || "____"}</div>
+                <div class="lr-number" style="margin-left: -27px;"><strong>LR No:</strong> ${parcel.trackingId}</div>
                 <div class="jurisdiction" style="margin-left: -27px;">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
             <div class="cut-line"></div>
@@ -144,11 +145,9 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
                 .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 30px; }
-                .lr-number { font-size: 12px; font-weight: bold; margin-bottom: 1mm; }
                 .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
-                .source-phone { font-size: 9px; text-align: center; margin-top: 0.5mm; }
-                .dest-phone-top { font-size: 9px; text-align: center; margin-top: 0.3mm; }
-                .website { font-size: 9px; text-align: center; margin-top: 0.3mm; }
+                .phone-row { display: flex; font-size: 9px; text-align: center; margin-top: 0.5mm; gap: 25px; justify-content: flex-start; }
+                .website { font-size: 9px; text-align: center; margin-top: 0.3mm; margin-left: -27px; }
                 
                 /* Route Bar */
                 .route-bar { 
@@ -197,7 +196,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     margin-bottom: 0.5mm;
                 }
                 .jurisdiction { text-align: center; margin-bottom: 1mm; }
-                .created-by { text-align: center; font-size: 9px; margin-bottom: 1mm }
+                .lr-number { text-align: center; font-size: 11px; font-weight: bold; margin-bottom: 1mm; }
                 
                 /* Cut Line */
                 .cut-line { 
