@@ -64,12 +64,13 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="header">
                 <div class="top-row">
                     <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
-                    <span style="white-space: nowrap;"><strong>LR No:</strong> ${parcel.trackingId}</span>
                 </div>
-                <div class="company-name" style="margin-left: -15px;">FRIENDS TRANSPORT CO.</div>
-                <div class="source-phone" style="margin-left: -15px;">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
-                <div class="dest-phone-top" style="margin-left: -15px;">${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</div>
-                <div class="website" style="margin-left: -15px;">www.friendstransport.in</div>
+                <div class="lr-number"><strong>LR No:</strong> ${parcel.trackingId}</div>
+                <div class="company-name" style="margin-left: -12px;">FRIENDS TRANSPORT CO.</div>
+                <div class="source-phone" style="margin-left: -27px;">${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</div>
+                <div class="dest-phone-top" style="margin-left: -27px; margin-bottom: 3px;">${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</div>
+                <div class="website" style="margin-left: -27px;">Track your order at</div>
+                <div class="website" style="margin-left: -27px; font-weight: bold;">www.friendstransport.in</div>
             </div>
             
             <div class="route-bar">
@@ -78,10 +79,10 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             </div>
             
             <div class="party-section">
-                <div><strong>Consignor:</strong> ${parcel.sender.name}</div>
-                <div><strong>Ph:</strong> ${parcel.sender.phoneNo || "NA"}</div>
-                <div><strong>Consignee:</strong> ${parcel.receiver.name}</div>
-                <div><strong>Ph:</strong> ${parcel.receiver.phoneNo || "NA"}</div>
+                <div><strong>Consignor: ${parcel.sender.name}</strong></div>
+                <div style="margin-bottom: 2.5mm;"><strong>Ph: ${parcel.sender.phoneNo || "NA"}</strong></div>
+                <div><strong>Consignee: ${parcel.receiver.name}</strong></div>
+                <div><strong>Ph: ${parcel.receiver.phoneNo || "NA"}</strong></div>
             </div>
             
             <table class="items-table ${auto === 1 && parcel.payment === 'To Pay' ? 'auto-table' : 'normal-table'}">
@@ -92,11 +93,11 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="footer-info">
                 <div class="delivery-row">
                     <span>Door Delivery: <strong>${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</strong></span>
-                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span><strong>Total: ${displayTotalAmount}<span style="font-size: 8px">(${parcel.payment.toUpperCase()})</span></strong></span>`}
+                    ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span>Payment: <strong>${parcel.payment.toUpperCase()}</strong></span>`}
                 </div>
-                <div class="gst-center" style="margin-left: -15px;">GST: 36AAFFF2744R1ZX</div>
-                <div class="created-by" style="margin-left: -15px;">Created By: ${parcel.addedBy?.name || "____"}</div>
-                <div class="jurisdiction" style="margin-left: -15px;">SUBJECT TO HYDERABAD JURISDICTION</div>
+                <div class="gst-center" style="margin-left: -27px;">GST: 36AAFFF2744R1ZX</div>
+                <div class="created-by" style="margin-left: -27px;">Created By: ${parcel.addedBy?.name || "____"}</div>
+                <div class="jurisdiction" style="margin-left: -27px;">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
             <div class="cut-line"></div>
         </div>
@@ -143,7 +144,8 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
                 .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 30px; }
-                .company-name { font-size: 16px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
+                .lr-number { font-size: 12px; font-weight: bold; margin-bottom: 1mm; }
+                .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
                 .source-phone { font-size: 9px; text-align: center; margin-top: 0.5mm; }
                 .dest-phone-top { font-size: 9px; text-align: center; margin-top: 0.3mm; }
                 .website { font-size: 9px; text-align: center; margin-top: 0.3mm; }
@@ -155,7 +157,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     margin-bottom: 1mm; 
                 }
                 .route-bar div { margin-bottom: 0.3mm; }
-                .route-bar div:last-child { margin-bottom: 0; }
+                .route-bar div:last-child { margin-bottom: 1mm; }
                 
                 /* Party Section */
                 .party-section { font-size: 11px; margin-bottom: 1.5mm; }
@@ -188,14 +190,14 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 
                 /* Footer Info */
                 .footer-info { font-size: 10px; }
-                .delivery-row { display: flex; margin-bottom: 1mm; gap: 25px }
+                .delivery-row { display: flex; margin-bottom: 3mm; gap: 32px }
                 .gst-center { 
                     text-align: center; 
                     font-size: 9px;
                     margin-bottom: 0.5mm;
                 }
-                .jurisdiction { text-align: center; margin-bottom: 0.5mm; }
-                .created-by { text-align: center; font-size: 9px; }
+                .jurisdiction { text-align: center; margin-bottom: 1mm; }
+                .created-by { text-align: center; font-size: 9px; margin-bottom: 1mm }
                 
                 /* Cut Line */
                 .cut-line { 
