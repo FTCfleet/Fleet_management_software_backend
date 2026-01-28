@@ -67,22 +67,23 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     <span style="white-space: nowrap;"><strong>Created By:</strong> ${parcel.addedBy?.name || "____"}</span>
                 </div>
                 <div class="company-name" style="margin-left: -19px;">FRIENDS TRANSPORT CO.</div>
-                <div class="phone-row" style="margin-top: 3px;">
-                    <span>${parcel.sourceWarehouse.warehouseID} Ph.: ${parcel.sourceWarehouse.phoneNo || "____"}</span>
-                    <span>${parcel.destinationWarehouse.warehouseID} Ph.: ${parcel.destinationWarehouse.phoneNo || "____"}</span>
+                <div class="lr-number" style="margin-top: 5px;"><strong>LR No:</strong> ${parcel.trackingId}</div>
+                <div class="phone-row" style="margin-top: 7px;">
+                    <span><strong>${parcel.sourceWarehouse.warehouseID} Ph.:</strong> ${parcel.sourceWarehouse.phoneNo || "____"}</span>
+                    <span><strong>${parcel.destinationWarehouse.warehouseID} Ph.:</strong> ${parcel.destinationWarehouse.phoneNo || "____"}</span>
                 </div>
-                <div class="website" style="margin-left: -56px; margin-top: 3px;">Track your order at: <strong>www.friendstransport.in</strong></div>
+                <div class="website" style="margin-left: -56px; margin-top: 5px;">Track your order at: <strong>www.friendstransport.in</strong></div>
             </div>
             
             <div class="route-bar">
                 <div><strong>From:</strong> ${parcel.sourceWarehouse.name}</div>
-                <div><strong>To:</strong> ${parcel.destinationWarehouse.name}</div>
+                <div style="margin-top: 3px;"><strong>To:</strong> ${parcel.destinationWarehouse.name}</div>
             </div>
             
-            <div class="party-section">
-                <div><strong>Consignor: ${parcel.sender.name}</strong></div>
+            <div class="party-section" style="margin-bottom: 10px">
+                <div style="margin-bottom: 0.5mm;"><strong>Consignor: ${parcel.sender.name}</strong></div>
                 <div style="margin-bottom: 2.5mm;"><strong>Ph: ${parcel.sender.phoneNo || "NA"}</strong></div>
-                <div><strong>Consignee: ${parcel.receiver.name}</strong></div>
+                <div style="margin-bottom: 0.5mm;"><strong>Consignee: ${parcel.receiver.name}</strong></div>
                 <div><strong>Ph: ${parcel.receiver.phoneNo || "NA"}</strong></div>
             </div>
             
@@ -92,13 +93,12 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             </table>
             
             <div class="footer-info">
-                <div class="delivery-row">
+                <div class="delivery-row" style="margin-top: 5px;">
                     <span>Door Delivery: <strong>${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</strong></span>
                     ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span>Payment: <strong>${parcel.payment.toUpperCase()}</strong></span>`}
                 </div>
-                <div class="gst-center" style="margin-left: -27px;">GST: 36AAFFF2744R1ZX</div>
-                <div class="lr-number" style="margin-left: -27px;"><strong>LR No:</strong> ${parcel.trackingId}</div>
-                <div class="jurisdiction" style="margin-left: -27px;">SUBJECT TO HYDERABAD JURISDICTION</div>
+                <div class="gst-center" style="margin-left: -30px; margin-bottom: 5px">GST: 36AAFFF2744R1ZX</div>
+                <div class="jurisdiction" style="margin-left: -30px;">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
             <div class="cut-line"></div>
         </div>
@@ -196,7 +196,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     margin-bottom: 0.5mm;
                 }
                 .jurisdiction { text-align: center; margin-bottom: 1mm; }
-                .lr-number { text-align: center; font-size: 11px; font-weight: bold; margin-bottom: 1mm; }
+                .lr-number {font-size: 11px; font-weight: bold; margin-bottom: 1mm; }
                 
                 /* Cut Line */
                 .cut-line { 
