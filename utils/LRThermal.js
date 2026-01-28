@@ -64,26 +64,26 @@ const generateLR = (parcel, auto = 0, options = {}) => {
             <div class="header">
                 <div class="top-row">
                     <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
-                    <span style="white-space: nowrap;"><strong>Created By:</strong> ${parcel.addedBy?.name || "____"}</span>
+                    <span style="white-space: nowrap;"><strong>Created by:</strong> ${parcel.addedBy?.name || "____"}</span>
                 </div>
                 <div class="company-name" style="margin-left: -19px;">FRIENDS TRANSPORT CO.</div>
-                <div class="lr-number" style="margin-top: 5px;"><strong>LR No:</strong> ${parcel.trackingId}</div>
-                <div class="phone-row" style="margin-top: 7px;">
+                <div class="lr-number" style="margin-top: 5px; margin-left: 65px">LR No: ${parcel.trackingId}</div>
+                <div class="phone-row" style="margin-top: 12px;">
                     <span><strong>${parcel.sourceWarehouse.warehouseID} Ph.:</strong> ${parcel.sourceWarehouse.phoneNo || "____"}</span>
                     <span><strong>${parcel.destinationWarehouse.warehouseID} Ph.:</strong> ${parcel.destinationWarehouse.phoneNo || "____"}</span>
                 </div>
-                <div class="website" style="margin-left: -56px; margin-top: 5px;">Track your order at: <strong>www.friendstransport.in</strong></div>
+                <div class="website" style="margin-left: -56px; margin-top: 10px;">Track your order at: <strong>www.friendstransport.in</strong></div>
             </div>
             
             <div class="route-bar">
                 <div><strong>From:</strong> ${parcel.sourceWarehouse.name}</div>
-                <div style="margin-top: 3px;"><strong>To:</strong> ${parcel.destinationWarehouse.name}</div>
+                <div style="margin-top: 6px;"><strong>To:</strong> ${parcel.destinationWarehouse.name}</div>
             </div>
             
-            <div class="party-section" style="margin-bottom: 10px">
-                <div style="margin-bottom: 0.5mm;"><strong>Consignor: ${parcel.sender.name}</strong></div>
+            <div class="party-section" style="margin-bottom: 16px">
+                <div style="margin-bottom: 1mm;"><strong>Consignor: ${parcel.sender.name}</strong></div>
                 <div style="margin-bottom: 2.5mm;"><strong>Ph: ${parcel.sender.phoneNo || "NA"}</strong></div>
-                <div style="margin-bottom: 0.5mm;"><strong>Consignee: ${parcel.receiver.name}</strong></div>
+                <div style="margin-bottom: 1mm;"><strong>Consignee: ${parcel.receiver.name}</strong></div>
                 <div><strong>Ph: ${parcel.receiver.phoneNo || "NA"}</strong></div>
             </div>
             
@@ -92,12 +92,12 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                 <tbody>${allItems}${totalRow}</tbody>
             </table>
             
-            <div class="footer-info">
+            <div class="footer-info" style="margin-top: 10px;">
                 <div class="delivery-row" style="margin-top: 5px;">
-                    <span>Door Delivery: <strong>${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</strong></span>
+                    <span style="margin-right: 25px;">Door Delivery: <strong>${parcel.isDoorDelivery ? (auto ? 'Yes' : displayValue(parcel.doorDeliveryCharge)) : 'No'}</strong></span>
                     ${auto === 1 && parcel.payment === 'To Pay' ? '' : `<span>Payment: <strong>${parcel.payment.toUpperCase()}</strong></span>`}
                 </div>
-                <div class="gst-center" style="margin-left: -30px; margin-bottom: 5px">GST: 36AAFFF2744R1ZX</div>
+                <div class="gst-center" style="margin-left: -30px; margin-bottom: 10px; margin-top: 3px;">GST: 36AAFFF2744R1ZX</div>
                 <div class="jurisdiction" style="margin-left: -30px;">SUBJECT TO HYDERABAD JURISDICTION</div>
             </div>
             <div class="cut-line"></div>
@@ -144,7 +144,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 
                 /* Header */
                 .header { margin-bottom: 1.5mm; }
-                .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 30px; }
+                .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 20px; }
                 .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
                 .phone-row { display: flex; font-size: 9px; text-align: center; margin-top: 0.5mm; gap: 25px; justify-content: flex-start; }
                 .website { font-size: 9px; text-align: center; margin-top: 0.3mm; margin-left: -27px; }
@@ -195,8 +195,8 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                     font-size: 9px;
                     margin-bottom: 0.5mm;
                 }
-                .jurisdiction { text-align: center; margin-bottom: 1mm; }
-                .lr-number {font-size: 11px; font-weight: bold; margin-bottom: 1mm; }
+                .jurisdiction { text-align: center; margin-bottom: 20px; }
+                .lr-number {font-size: 11px; font-weight: 1000; margin-bottom: 1mm; }
                 
                 /* Cut Line */
                 .cut-line { 
