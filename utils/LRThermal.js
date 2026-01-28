@@ -73,6 +73,7 @@ const generateLR = (parcel, auto = 0, options = {}) => {
                     <span><strong>${parcel.destinationWarehouse.warehouseID} Ph.:</strong> ${parcel.destinationWarehouse.phoneNo || "____"}</span>
                 </div>
                 <div class="website" style="margin-left: -56px; margin-top: 10px;">Track your order at: <strong>www.friendstransport.in</strong></div>
+                <div class="separator-line" style="margin-top: 10px; margin-bottom: 10px;"></div>
             </div>
             
             <div class="route-bar">
@@ -148,6 +149,11 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                 .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
                 .phone-row { display: flex; font-size: 9px; text-align: center; margin-top: 0.5mm; gap: 25px; justify-content: flex-start; }
                 .website { font-size: 9px; text-align: center; margin-top: 0.3mm; margin-left: -27px; }
+                .separator-line { 
+                    border-bottom: 1px dashed #000; 
+                    margin: 2mm 0 1mm 0; 
+                    width: calc(100% - 35px); 
+                }
                 
                 /* Route Bar */
                 .route-bar { 
