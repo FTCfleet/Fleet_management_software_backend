@@ -63,8 +63,8 @@ const generateLR = (parcel, auto = 0, options = {}) => {
         <div class="lr-receipt">
             <div class="header">
                 <div class="top-row">
-                    <span style="white-space: nowrap;"><strong>Date:</strong> ${formatToIST(parcel.placedAt)}</span>
-                    <span style="white-space: nowrap;"><strong>Created by:</strong> ${parcel.addedBy?.name || "____"}</span>
+                    <span style="white-space: nowrap;"><strong>Date:</strong>${formatToIST(parcel.placedAt)}</span>
+                    <span style="white-space: nowrap;"><strong>Created by:</strong><span style="font-size: 9px;">${parcel.addedBy?.name || "____"}</span></span>
                 </div>
                 <div class="company-name" style="margin-left: -19px;">FRIENDS TRANSPORT CO.</div>
                 <div class="lr-number" style="margin-top: 5px; margin-left: 65px">LR No: ${parcel.trackingId}</div>
