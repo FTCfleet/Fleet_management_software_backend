@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QZ Tray ESC/POS Thermal Print with Autocut</title>
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #0D47A1;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #0D47A1;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1565C0;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .note {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .note h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖨️ QZ Tray ESC/POS Thermal Print</h1>
+        <p>Print thermal receipts with automatic paper cutting</p>
+
+        <div class="note">
+            <h3>⚠️ Important Notes:</h3>
+            <ul>
+                <li><strong>QZ Tray must be running</strong> on your computer</li>
+                <li><strong>Thermal printer must be connected</strong> and configured</li>
+                <li><strong>ESC/POS autocut commands</strong> will automatically cut the paper</li>
+                <li>This prints <strong>3 copies</strong> (2 normal + 1 auto for To Pay)</li>
+            </ul>
+        </div>
+
+        <div class="input-group">
+            <label for="apiUrl">Backend API URL:</label>
+            <input type="text" id="apiUrl" value="http://10.121.197.207:8000/api" placeholder="http://your-backend-url/api">
+        </div>
+
+        <div class="input-group">
+            <label for="trackingId">LR Tracking ID:</label>
+            <input type="text" id="trackingId" placeholder="HYD02-12564" value="HYD02-12564">
+        </div>
+
+        <div class="input-group">
+            <label for="printerName">Printer Name:</label>
+            <input type="text" id="printerName" placeholder="TVS RP 3230 ABW" value="">
+        </div>
+
+        <div>
+            <button onclick="connectQZ()">1. Connect to QZ Tray</button>
+            <button onclick="findPrinters()" id="findPrintersBtn" disabled>2. Find Printers</button>
+            <button onclick="printReceipt()" id="printBtn" disabled>3. Print Receipt</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        let qzConnected = false;
+
+        // Connect to QZ Tray
+        async function connectQZ() {
+            showStatus('Connecting to QZ Tray...', 'info');
+            
+            try {
+                if (!qz.websocket.isActive()) {
+                    await qz.websocket.connect();
+                }
+                qzConnected = true;
+                document.getElementById('findPrintersBtn').disabled = false;
+                showStatus('✅ Connected to QZ Tray successfully!', 'success');
+            } catch (err) {
+                showStatus('❌ Failed to connect to QZ Tray: ' + err.message + '<br><br>Make sure QZ Tray is running!', 'error');
+            }
+        }
+
+        // Find available printers
+        async function findPrinters() {
+            if (!qzConnected) {
+                showStatus('❌ Please connect to QZ Tray first', 'error');
+                return;
+            }
+
+            showStatus('Searching for printers...', 'info');
+            
+            try {
+                const printers = await qz.printers.find();
+                
+                if (printers.length === 0) {
+                    showStatus('❌ No printers found', 'error');
+                    return;
+                }
+
+                let printerList = '<strong>Available Printers:</strong><ul>';
+                printers.forEach(printer => {
+                    printerList += `<li>${printer}</li>`;
+                });
+                printerList += '</ul><p>Enter the printer name above and click "Print Receipt"</p>';
+                
+                showStatus(printerList, 'success');
+                document.getElementById('printBtn').disabled = false;
+                
+                // Auto-fill first printer if field is empty
+                if (!document.getElementById('printerName').value && printers.length > 0) {
+                    document.getElementById('printerName').value = printers[0];
+                }
+            } catch (err) {
+                showStatus('❌ Error finding printers: ' + err.message, 'error');
+            }
+        }
+
+        // Print receipt with ESC/POS commands
+        async function printReceipt() {
+            if (!qzConnected) {
+                showStatus('❌ Please connect to QZ Tray first', 'error');
+                return;
+            }
+
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+            const trackingId = document.getElementById('trackingId').value.trim();
+            const printerName = document.getElementById('printerName').value.trim();
+
+            if (!apiUrl || !trackingId || !printerName) {
+                showStatus('❌ Please fill in all fields', 'error');
+                return;
+            }
+
+            showStatus('Fetching receipt data...', 'info');
+
+            try {
+                // Fetch ESC/POS commands from backend as binary
+                const response = await fetch(`${apiUrl}/parcel/generate-lr-receipt-thermal-escpos/${trackingId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Get as ArrayBuffer to preserve binary data
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Convert to Uint8Array
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                showStatus('Sending to printer...', 'info');
+
+                // Configure QZ Tray for raw ESC/POS printing
+                const config = qz.configs.create(printerName, {
+                    encoding: 'latin1',  // Critical: Use latin1 (ISO-8859-1) for ESC/POS
+                    altPrinting: true
+                });
+
+                // Send raw ESC/POS data as byte array
+                const data = [{
+                    type: 'raw',
+                    format: 'command',  // Use 'command' format for binary data
+                    data: uint8Array
+                }];
+
+                await qz.print(config, data);
+
+                showStatus('✅ Print job sent successfully!<br><br>' +
+                          '<strong>What happened:</strong><br>' +
+                          '• 3 copies printed (2 normal + 1 auto)<br>' +
+                          '• Paper automatically cut after each copy<br>' +
+                          '• ESC/POS commands handled by printer<br>' +
+                          '• No garbled characters (proper binary encoding)', 'success');
+
+            } catch (err) {
+                showStatus('❌ Print failed: ' + err.message + '<br><br>' +
+                          '<strong>Troubleshooting:</strong><br>' +
+                          '• Check if backend URL is correct<br>' +
+                          '• Verify tracking ID exists<br>' +
+                          '• Ensure printer is connected and ready<br>' +
+                          '• Check if printer supports ESC/POS', 'error');
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = 'status ' + type;
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                connectQZ();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

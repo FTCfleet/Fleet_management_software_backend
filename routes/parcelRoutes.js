@@ -25,6 +25,9 @@ router.route('/generate-lr-receipt/:id')
 router.route('/generate-lr-receipt-thermal/:id')
     .get(catchAsync(parcelController.generateLRThermal))
 
+router.route('/generate-lr-receipt-thermal-escpos/:id')
+    .get(catchAsync(parcelController.generateLRThermalESCPOS))
+
 router.route('/preview-lr-thermal/:id')
     .get(catchAsync(parcelController.previewLRThermal))
 

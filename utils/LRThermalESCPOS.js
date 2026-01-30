@@ -139,8 +139,11 @@ const generateESCPOSReceipt = (parcel, auto = 0) => {
     receipt += 'SUBJECT TO HYDERABAD' + LF;
     receipt += 'JURISDICTION' + LF;
     
-    // Cut paper
-    receipt += GS + 'V' + '\x00'; // Full cut
+    // Feed lines before cut (ensures content is past cutter)
+    receipt += '\n\n\n';
+    
+    // Cut paper - using alternative command that's more compatible
+    receipt += GS + 'V' + String.fromCharCode(0); // Full cut
     
     return receipt;
 };

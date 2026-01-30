@@ -820,6 +820,41 @@ module.exports.generateLRThermal = async (req, res) => {
     }
 };
 
+// ESC/POS thermal print for QZ Tray with autocut (returns raw ESC/POS commands)
+module.exports.generateLRThermalESCPOS = async (req, res) => {    
+    try {
+        const { id } = req.params;
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
+
+        if (!parcel) {
+            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
+        }
+
+        // Import ESC/POS generator
+        const { generateThreeCopies } = require("../utils/LRThermalESCPOS.js");
+        
+        // Generate raw ESC/POS commands (includes autocut)
+        const escposCommands = generateThreeCopies(parcel);
+        
+        // Convert string to Buffer using latin1 encoding (preserves binary ESC/POS commands)
+        // latin1 (ISO-8859-1) maps each character code directly to a byte value
+        const buffer = Buffer.from(escposCommands, 'latin1');
+        
+        // Return as binary data
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', 'inline');
+        res.send(buffer);
+
+    } catch (err) {
+        console.error('Error generating ESC/POS Receipt:', err);
+        return res.status(500).json({
+            message: "Failed to generate ESC/POS Receipt",
+            error: err.message,
+            flag: false
+        });
+    }
+};
+
 // Preview thermal LR in print menu (generates PDF)
 module.exports.previewLRThermal = async (req, res) => {    
     try {
