@@ -7,7 +7,7 @@ const Item = require("../models/itemSchema.js");
 const PaymentTracking = require("../models/paymentTrackingSchema.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
-const { generateLRSheetThermal, generateLRForQZTray } = require("../utils/LRThermal.js");
+const { generateLRSheetThermal } = require("../utils/LRThermal.js");
 const Warehouse = require("../models/warehouseSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
 const {getNow} = require("../utils/dateFormatter.js");
@@ -926,37 +926,6 @@ module.exports.previewLRThermal = async (req, res) => {
         console.error('Error generating LR Receipt:', err);
         return res.status(500).json({
             message: "Failed to generate LR Receipt",
-            error: err.message,
-            flag: false
-        });
-    }
-};
-
-// New endpoint for QZ Tray printing with auto-cut support
-module.exports.generateLRForQZTray = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
-
-        if (!parcel) {
-            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
-        }
-
-        // Generate individual receipts for QZ Tray
-        const lrData = generateLRForQZTray(parcel);
-
-        // Return JSON with styles and individual receipt HTML
-        res.json({
-            flag: true,
-            trackingId: id,
-            styles: lrData.styles,
-            receipts: lrData.receipts
-        });
-
-    } catch (err) {
-        console.error('Error generating LR for QZ Tray:', err);
-        return res.status(500).json({
-            message: "Failed to generate LR for QZ Tray",
             error: err.message,
             flag: false
         });

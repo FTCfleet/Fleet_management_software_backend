@@ -220,16 +220,4 @@ const generateLRSheetThermal = (parcel, options = {}) => {
     `;
 };
 
-// Generate individual LR receipts for QZ Tray (with auto-cut support)
-const generateLRForQZTray = (parcel, options = {}) => {
-    return {
-        styles: getThermalStyles(),
-        receipts: [
-            generateLR(parcel, 0, options),  // Copy 1
-            generateLR(parcel, 0, options),  // Copy 2
-            generateLR(parcel, 1, options)   // Copy 3 (auto/simplified)
-        ]
-    };
-};
-
-module.exports = { generateLRSheetThermal, generateLRForQZTray };
+module.exports = { generateLRSheetThermal };

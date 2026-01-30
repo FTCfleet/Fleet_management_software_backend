@@ -31,9 +31,6 @@ router.route('/generate-lr-receipt-thermal-escpos/:id')
 router.route('/preview-lr-thermal/:id')
     .get(catchAsync(parcelController.previewLRThermal))
 
-router.route('/generate-lr-qz-tray/:id')
-    .get(catchAsync(parcelController.generateLRForQZTray))
-
 router.route('/generate-lr-escpos/:id')
     .get(catchAsync(parcelController.generateLRESCPOS))
 
