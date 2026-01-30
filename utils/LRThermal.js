@@ -106,6 +106,84 @@ const generateLR = (parcel, auto = 0, options = {}) => {
     `;
 };
 
+// Common CSS styles for thermal receipts
+const getThermalStyles = () => `
+    @page { 
+        size: 78mm auto; 
+        margin: 0; 
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 78mm; margin: 0; padding: 1mm 0; font-family: 'Courier New', 'Courier', monospace; line-height: 1.3; }
+    
+    .lr-receipt { 
+        width: 100%; 
+        padding: 2mm 0; 
+        margin-bottom: 0; 
+    }
+    
+    /* Header */
+    .header { margin-bottom: 1.5mm; }
+    .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 20px; }
+    .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
+    .phone-row { display: flex; font-size: 9px; text-align: center; margin-top: 0.5mm; gap: 25px; justify-content: flex-start; }
+    .website { font-size: 9px; text-align: center; margin-top: 0.3mm; margin-left: -27px; }
+    .separator-line { 
+        border-bottom: 1px dashed #000; 
+        margin: 2mm 0 1mm 0; 
+        width: calc(100% - 35px); 
+    }
+    
+    /* Route Bar */
+    .route-bar { 
+        font-size: 11px; 
+        padding: 1mm 0; 
+        margin-bottom: 1mm; 
+    }
+    .route-bar div { margin-bottom: 0.3mm; }
+    .route-bar div:last-child { margin-bottom: 1mm; }
+    
+    /* Party Section */
+    .party-section { font-size: 11px; margin-bottom: 1.5mm; }
+    .party-section div { margin-bottom: 0.5mm; }
+    
+    /* Items Table */
+    .items-table { 
+        width: calc(100% - 30px); 
+        margin: 0 0 1.5mm 0;
+        border-collapse: collapse; 
+        font-size: 10px; 
+    }
+    .items-table th, .items-table td { padding: 0.8mm; text-align: center; vertical-align: middle; }
+    .items-table th { font-weight: bold; border-bottom: 1px dashed #000; }
+    .items-table tbody tr { }
+    .items-table tbody tr:last-child { border-bottom: none; }
+    
+    /* Column widths - Normal (4 columns) */
+    .normal-table th:nth-child(1), .normal-table td:nth-child(1) { width: 10%; text-align: center; }
+    .normal-table th:nth-child(2), .normal-table td:nth-child(2) { width: 45%; text-align: left; }
+    .normal-table th:nth-child(3), .normal-table td:nth-child(3) { width: 15%; text-align: center; }
+    .normal-table th:nth-child(4), .normal-table td:nth-child(4) { width: 30%; text-align: right; padding-right: 2mm; }
+    
+    /* Column widths - Auto (3 columns) */
+    .auto-table th:nth-child(1), .auto-table td:nth-child(1) { width: 12%; text-align: center; }
+    .auto-table th:nth-child(2), .auto-table td:nth-child(2) { width: 63%; text-align: left; }
+    .auto-table th:nth-child(3), .auto-table td:nth-child(3) { width: 25%; text-align: center; }
+    
+    .total-row { font-weight: bold; border-top: 1px dashed #000 !important;}
+    
+    /* Footer Info */
+    .footer-info { font-size: 10px; }
+    .delivery-row { display: flex; margin-bottom: 3mm; gap: 32px }
+    .gst-center { 
+        text-align: center; 
+        font-size: 9px;
+        margin-bottom: 0.5mm;
+    }
+    .jurisdiction { text-align: center; margin-bottom: 20px; }
+    .lr-number {font-size: 11px; font-weight: 1000; margin-bottom: 1mm; }
+`;
+
+// Generate complete HTML document (for browser print - legacy)
 const generateLRSheetThermal = (parcel, options = {}) => {
     return `
         <!DOCTYPE html>
@@ -113,10 +191,7 @@ const generateLRSheetThermal = (parcel, options = {}) => {
         <head>
             <title>FTC LR Receipt</title>
             <style>
-                @page { 
-                    size: 78mm auto; 
-                    margin: 0; 
-                }
+                ${getThermalStyles()}
                 @media print {
                     .lr-receipt {
                         page-break-after: always;
@@ -127,84 +202,6 @@ const generateLRSheetThermal = (parcel, options = {}) => {
                         break-after: auto;
                     }
                 }
-                * { box-sizing: border-box; margin: 0; padding: 0; }
-                body { width: 78mm; margin: 0; padding: 1mm 0; font-family: 'Courier New', 'Courier', monospace; line-height: 1.3; }
-                
-                .lr-receipt { 
-                    width: 100%; 
-                    padding: 2mm 0; 
-                    margin-bottom: 0; 
-                    page-break-after: always;
-                    break-after: page;
-                }
-                .lr-receipt:last-child { 
-                    margin-bottom: 0; 
-                    page-break-after: auto;
-                    break-after: auto;
-                }
-                
-                /* Header */
-                .header { margin-bottom: 1.5mm; }
-                .top-row { display: flex; align-items: center; font-size: 9px; margin-bottom: 1mm; flex-wrap: nowrap; gap: 20px; }
-                .company-name { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: 0.8px; font-family: 'Verdana', 'Geneva', sans-serif; }
-                .phone-row { display: flex; font-size: 9px; text-align: center; margin-top: 0.5mm; gap: 25px; justify-content: flex-start; }
-                .website { font-size: 9px; text-align: center; margin-top: 0.3mm; margin-left: -27px; }
-                .separator-line { 
-                    border-bottom: 1px dashed #000; 
-                    margin: 2mm 0 1mm 0; 
-                    width: calc(100% - 35px); 
-                }
-                
-                /* Route Bar */
-                .route-bar { 
-                    font-size: 11px; 
-                    padding: 1mm 0; 
-                    margin-bottom: 1mm; 
-                }
-                .route-bar div { margin-bottom: 0.3mm; }
-                .route-bar div:last-child { margin-bottom: 1mm; }
-                
-                /* Party Section */
-                .party-section { font-size: 11px; margin-bottom: 1.5mm; }
-                .party-section div { margin-bottom: 0.5mm; }
-                
-                /* Items Table */
-                .items-table { 
-                    width: calc(100% - 30px); 
-                    margin: 0 0 1.5mm 0;
-                    border-collapse: collapse; 
-                    font-size: 10px; 
-                }
-                .items-table th, .items-table td { padding: 0.8mm; text-align: center; vertical-align: middle; }
-                .items-table th { font-weight: bold; border-bottom: 1px dashed #000; }
-                .items-table tbody tr { }
-                .items-table tbody tr:last-child { border-bottom: none; }
-                
-                /* Column widths - Normal (4 columns) */
-                .normal-table th:nth-child(1), .normal-table td:nth-child(1) { width: 10%; text-align: center; }
-                .normal-table th:nth-child(2), .normal-table td:nth-child(2) { width: 45%; text-align: left; }
-                .normal-table th:nth-child(3), .normal-table td:nth-child(3) { width: 15%; text-align: center; }
-                .normal-table th:nth-child(4), .normal-table td:nth-child(4) { width: 30%; text-align: right; padding-right: 2mm; }
-                
-                /* Column widths - Auto (3 columns) */
-                .auto-table th:nth-child(1), .auto-table td:nth-child(1) { width: 12%; text-align: center; }
-                .auto-table th:nth-child(2), .auto-table td:nth-child(2) { width: 63%; text-align: left; }
-                .auto-table th:nth-child(3), .auto-table td:nth-child(3) { width: 25%; text-align: center; }
-                
-                .total-row { font-weight: bold; border-top: 1px dashed #000 !important;}
-                
-                /* Footer Info */
-                .footer-info { font-size: 10px; }
-                .delivery-row { display: flex; margin-bottom: 3mm; gap: 32px }
-                .gst-center { 
-                    text-align: center; 
-                    font-size: 9px;
-                    margin-bottom: 0.5mm;
-                }
-                .jurisdiction { text-align: center; margin-bottom: 20px; }
-                .lr-number {font-size: 11px; font-weight: 1000; margin-bottom: 1mm; }
-                
-                /* Cut Line */
                 .cut-line { 
                     height: 0; 
                     margin: 0;
@@ -223,4 +220,16 @@ const generateLRSheetThermal = (parcel, options = {}) => {
     `;
 };
 
-module.exports = { generateLRSheetThermal };
+// Generate individual LR receipts for QZ Tray (with auto-cut support)
+const generateLRForQZTray = (parcel, options = {}) => {
+    return {
+        styles: getThermalStyles(),
+        receipts: [
+            generateLR(parcel, 0, options),  // Copy 1
+            generateLR(parcel, 0, options),  // Copy 2
+            generateLR(parcel, 1, options)   // Copy 3 (auto/simplified)
+        ]
+    };
+};
+
+module.exports = { generateLRSheetThermal, generateLRForQZTray };

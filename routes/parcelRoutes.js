@@ -25,6 +25,15 @@ router.route('/generate-lr-receipt/:id')
 router.route('/generate-lr-receipt-thermal/:id')
     .get(catchAsync(parcelController.generateLRThermal))
 
+router.route('/preview-lr-thermal/:id')
+    .get(catchAsync(parcelController.previewLRThermal))
+
+router.route('/generate-lr-qz-tray/:id')
+    .get(catchAsync(parcelController.generateLRForQZTray))
+
+router.route('/generate-lr-escpos/:id')
+    .get(catchAsync(parcelController.generateLRESCPOS))
+
 router.route('/edit/:id')
     .put(authenticateToken, isSupervisor, catchAsync(parcelController.editParcel))
 

@@ -1,2 +1,5 @@
 node_modules/
 .env
+
+# Flutter app folder
+ftc_print_app/

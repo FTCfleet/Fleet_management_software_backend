@@ -7,7 +7,7 @@ const Item = require("../models/itemSchema.js");
 const PaymentTracking = require("../models/paymentTrackingSchema.js");
 const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
-const { generateLRSheetThermal } = require("../utils/LRThermal.js");
+const { generateLRSheetThermal, generateLRForQZTray } = require("../utils/LRThermal.js");
 const Warehouse = require("../models/warehouseSchema.js");
 const ItemType = require("../models/itemTypeSchema.js");
 const {getNow} = require("../utils/dateFormatter.js");
@@ -794,7 +794,34 @@ module.exports.generateLR = async (req, res) => {
     }
 };
 
+// Direct thermal print for QZ Tray (no preview, returns HTML)
 module.exports.generateLRThermal = async (req, res) => {    
+    try {
+        const { id } = req.params;
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
+
+        if (!parcel) {
+            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
+        }
+
+        // Return HTML content directly for QZ Tray printing
+        const htmlContent = generateLRSheetThermal(parcel, {});
+        
+        res.setHeader('Content-Type', 'text/html');
+        res.send(htmlContent);
+
+    } catch (err) {
+        console.error('Error generating LR Receipt:', err);
+        return res.status(500).json({
+            message: "Failed to generate LR Receipt",
+            error: err.message,
+            flag: false
+        });
+    }
+};
+
+// Preview thermal LR in print menu (generates PDF)
+module.exports.previewLRThermal = async (req, res) => {    
     try {
         const { id } = req.params;
         const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
@@ -847,8 +874,7 @@ module.exports.generateLRThermal = async (req, res) => {
 
         console.log('Generating PDF...');
         const pdfBuffer = await page.pdf({
-            width: '4in',
-            height: '6in',
+            width: '78mm',
             printBackground: true,
             margin: { top: '0', right: '0', bottom: '0', left: '0' }
         });
@@ -857,7 +883,7 @@ module.exports.generateLRThermal = async (req, res) => {
 
         console.log('Sending PDF response...');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="FTC LR RECEIPT ${id}.pdf"`); 
+        res.setHeader('Content-Disposition', `inline; filename="FTC LR THERMAL ${id}.pdf"`); 
         res.setHeader('Content-Length', pdfBuffer.length);
         res.end(pdfBuffer);
 
@@ -865,6 +891,37 @@ module.exports.generateLRThermal = async (req, res) => {
         console.error('Error generating LR Receipt:', err);
         return res.status(500).json({
             message: "Failed to generate LR Receipt",
+            error: err.message,
+            flag: false
+        });
+    }
+};
+
+// New endpoint for QZ Tray printing with auto-cut support
+module.exports.generateLRForQZTray = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
+
+        if (!parcel) {
+            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
+        }
+
+        // Generate individual receipts for QZ Tray
+        const lrData = generateLRForQZTray(parcel);
+
+        // Return JSON with styles and individual receipt HTML
+        res.json({
+            flag: true,
+            trackingId: id,
+            styles: lrData.styles,
+            receipts: lrData.receipts
+        });
+
+    } catch (err) {
+        console.error('Error generating LR for QZ Tray:', err);
+        return res.status(500).json({
+            message: "Failed to generate LR for QZ Tray",
             error: err.message,
             flag: false
         });
@@ -1033,3 +1090,30 @@ module.exports.getParcelsForApp = async (req, res) => {
         return res.status(500).json({ message: "Failed to get all parcel details (for app)", error: err.message, flag: false });
     }
 }
+
+// ESC/POS endpoint for mobile thermal printing
+module.exports.generateLRESCPOS = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const parcel = await Parcel.findOne({ trackingId: id }).populate(createParcelPopulateConfig());
+
+        if (!parcel) {
+            return res.status(404).json({ message: `Can't find any Parcel with Tracking ID ${id}`, flag: false });
+        }
+
+        const { generateThreeCopies } = require('../utils/LRThermalESCPOS.js');
+        const escposData = generateThreeCopies(parcel);
+
+        // Return ESC/POS commands as text
+        res.setHeader('Content-Type', 'text/plain');
+        res.send(escposData);
+
+    } catch (err) {
+        console.error('Error generating ESC/POS data:', err);
+        return res.status(500).json({
+            message: "Failed to generate ESC/POS data",
+            error: err.message,
+            flag: false
+        });
+    }
+};
