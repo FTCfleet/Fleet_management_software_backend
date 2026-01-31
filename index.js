@@ -36,9 +36,12 @@ db.once("open", () => {
 });
 
 const corsOptions = {
-    // origin: 'https://friendstransport.in',
-    origin: '*',
-    // origin: ['https://ftcfleet.netlify.app', 'http://localhost:5173'],
+    origin: [
+        'https://friendstransport.in',
+        'http://friendstransport.in',
+        'https://www.friendstransport.in',
+        'http://www.friendstransport.in'
+    ],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
 }
