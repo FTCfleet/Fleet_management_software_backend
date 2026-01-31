@@ -19,6 +19,51 @@ const path = require('path');
 const { toDbValue } = require("../utils/currencyUtils.js");
 
 const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
+
+// Helper function to get Puppeteer launch options
+const getPuppeteerLaunchOptions = async () => {
+    console.log('Configuring Puppeteer launch options...');
+    
+    // Check if running on Render or AWS Lambda
+    if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+        console.log('Cloud environment detected - using @sparticuz/chromium');
+        return {
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
+        };
+    }
+    
+    // Check if custom Chrome path is specified
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        console.log(`Using custom Chrome path: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+        return {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        };
+    }
+    
+    // Try to use @sparticuz/chromium as fallback for VPS
+    try {
+        console.log('Attempting to use @sparticuz/chromium...');
+        const chromiumPath = await chromium.executablePath();
+        console.log(`Chromium path: ${chromiumPath}`);
+        return {
+            args: chromium.args,
+            executablePath: chromiumPath,
+            headless: chromium.headless,
+        };
+    } catch (e) {
+        console.log('Chromium not available, using default Puppeteer');
+        // Last resort - let Puppeteer find Chrome
+        return {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        };
+    }
+};
+
 const normalizeString = (value) => typeof value === 'string' ? value.trim() : '';
 const sanitizedValue = (value) => {
     const normalized = normalizeString(value);
@@ -723,27 +768,7 @@ module.exports.generateLR = async (req, res) => {
         }
 
         console.log('Launching Puppeteer...');
-        let launchOptions = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        };
-
-        if (process.env.RENDER) {
-            // Render environment — use @sparticuz/chromium
-            launchOptions = {
-                args: chromium.args,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-            };
-        } else {
-            // Local development — use system Chrome
-            launchOptions = {
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
-            };
-        }
-
+        const launchOptions = await getPuppeteerLaunchOptions();
         const browser = await puppeteer.launch(launchOptions);
 
         const page = await browser.newPage();
@@ -866,27 +891,7 @@ module.exports.previewLRThermal = async (req, res) => {
         }
 
         console.log('Launching Puppeteer...');
-        let launchOptions = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        };
-
-        if (process.env.RENDER) {
-            // Render environment — use @sparticuz/chromium
-            launchOptions = {
-                args: chromium.args,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-            };
-        } else {
-            // Local development — use system Chrome
-            launchOptions = {
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
-            };
-        }
-
+        const launchOptions = await getPuppeteerLaunchOptions();
         const browser = await puppeteer.launch(launchOptions);
 
         const page = await browser.newPage();
