@@ -14,6 +14,13 @@
 - ✓ You have a dedicated server
 - ✓ You're getting the error: "Browser was not found at executablePath"
 
+### What This Fixes
+
+This fix enables PDF generation on VPS for:
+- ✅ LR Receipt printing (A4 format)
+- ✅ Memo/Ledger printing (A4 format)
+- ✅ Any other Puppeteer-based PDF generation
+
 ### How the Code Protects Render
 
 The code checks for Render **FIRST** before trying VPS paths:

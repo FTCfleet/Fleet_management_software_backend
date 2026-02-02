@@ -48,7 +48,8 @@ sudo apt-get update -y || sudo yum update -y
 
 # Install Chromium based on OS
 echo ""
-echo "Installing Chromium..."
+echo "Installing Chromium..."sudo apt-get install -y chromium-browser
+
 
 if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
     # Ubuntu/Debian

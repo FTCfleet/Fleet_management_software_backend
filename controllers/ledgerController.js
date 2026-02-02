@@ -209,39 +209,65 @@ module.exports.generatePDF = async (req, res) => {
         };
 
         console.log('Launching Puppeteer...');
+        
+        // Use the same configuration as parcelController
         let launchOptions = {
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         };
 
-        if (process.env.RENDER) {
-            // Render environment — use @sparticuz/chromium
+        // PRIORITY 1: Check if running on Render or AWS Lambda
+        if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+            console.log('✓ Cloud environment detected (Render/Lambda) - using @sparticuz/chromium');
             launchOptions = {
                 args: chromium.args,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
             };
-        } else {
-            // Local development — use installed full Puppeteer
-            const puppeteerLocal = require('puppeteer');
-            launchOptions = {
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                executablePath: puppeteerLocal.executablePath(),
-            };
+        }
+        // PRIORITY 2: Check if custom Chrome path is specified (for VPS)
+        else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+            console.log(`Using custom Chrome path: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+            if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+                launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            } else {
+                console.error(`Chrome not found at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+            }
+        }
+        // PRIORITY 3: Try common Chromium/Chrome paths on Linux VPS
+        else {
+            const commonPaths = [
+                '/usr/bin/chromium-browser',
+                '/usr/bin/chromium',
+                '/usr/bin/google-chrome',
+                '/usr/bin/google-chrome-stable',
+                '/snap/bin/chromium',
+            ];
+            
+            let foundPath = false;
+            for (const chromePath of commonPaths) {
+                if (fs.existsSync(chromePath)) {
+                    console.log(`✓ Found Chrome/Chromium at: ${chromePath} (VPS mode)`);
+                    launchOptions.executablePath = chromePath;
+                    foundPath = true;
+                    break;
+                }
+            }
+            
+            if (!foundPath) {
+                console.warn('⚠️  WARNING: No Chrome/Chromium found. Trying @sparticuz/chromium fallback...');
+                try {
+                    launchOptions = {
+                        args: chromium.args,
+                        executablePath: await chromium.executablePath(),
+                        headless: chromium.headless,
+                    };
+                } catch (e) {
+                    console.error('Failed to get chromium path:', e.message);
+                }
+            }
         }
 
-        // if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        //     launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        // }
-        // if (process.env.AWS_LAMBDA_FUNCTION_VERSION && chromium) {
-        //     launchOptions = {
-        //         args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
-        //         executablePath: await chromium.executablePath(),
-        //         headless: chromium.headless,
-        //         ignoreHTTPSErrors: true,
-        //     };
-        // }
         const browser = await puppeteer.launch(launchOptions);
 
         const page = await browser.newPage();

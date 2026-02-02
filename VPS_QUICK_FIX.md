@@ -13,6 +13,8 @@
 "Browser was not found at the configured executablePath (/usr/bin/google-chrome)"
 ```
 
+This error occurs when trying to generate PDFs (LR receipts, memos/ledgers) on VPS.
+
 ## How the Code Works (Priority Order)
 
 The code automatically detects your environment:
