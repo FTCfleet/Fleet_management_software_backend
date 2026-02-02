@@ -1,145 +1,270 @@
-# VPS Puppeteer/Chrome Fix
+# VPS Puppeteer Fix Guide
 
-## Problem
-Getting error: `Browser was not found at the configured executablePath (/usr/bin/google-chrome)`
+## ⚠️ CRITICAL: READ THIS FIRST
 
-This happens because Chrome/Chromium is not installed at the expected path on your VPS.
+### This Guide is for VPS/Dedicated Servers ONLY
 
-## Solution Applied
+**DO NOT use this guide if you're deploying on:**
+- ✗ Render (already uses `@sparticuz/chromium` automatically)
+- ✗ AWS Lambda (already uses `@sparticuz/chromium` automatically)
+- ✗ Heroku, Vercel, Netlify, or other cloud platforms
 
-### 1. Updated `controllers/parcelController.js`
+**ONLY use this guide if:**
+- ✓ You have a VPS (Virtual Private Server)
+- ✓ You have a dedicated server
+- ✓ You're getting the error: "Browser was not found at executablePath"
 
-Added a helper function `getPuppeteerLaunchOptions()` that:
-- First checks if running on Render or AWS Lambda → uses `@sparticuz/chromium`
-- Then checks if `PUPPETEER_EXECUTABLE_PATH` env var is set → uses that path
-- Falls back to `@sparticuz/chromium` for VPS environments
-- Last resort: lets Puppeteer find Chrome automatically
+### How the Code Protects Render
 
-### 2. Updated `.env`
+The code checks for Render **FIRST** before trying VPS paths:
 
-Commented out the incorrect Chrome path:
-```bash
-# PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome  # Commented out
+```javascript
+// PRIORITY 1: Render/Lambda (checked FIRST)
+if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+    return @sparticuz/chromium; // ✅ Render always uses this
+}
+
+// PRIORITY 2-4: VPS detection (only runs if NOT Render)
+// ... VPS-specific logic here ...
 ```
 
-Now the app will use `@sparticuz/chromium` package which is already installed.
+**Your Render deployment is safe and will continue working exactly as before.**
 
-## How It Works
+---
 
-The `@sparticuz/chromium` package:
-- Downloads a pre-built Chromium binary optimized for serverless/VPS
-- Works on Linux environments without needing system Chrome
-- Automatically handles the executable path
-- Smaller footprint than full Chrome installation
+## Problem
+Error: `Browser was not found at the configured executablePath (/usr/bin/google-chrome)`
 
-## Testing on VPS
+This happens because Puppeteer needs Chrome/Chromium to generate PDFs, but it's not installed on your VPS.
 
-1. **Deploy the updated code to your VPS**
-   ```bash
-   git pull origin main
-   npm install  # Just to be safe
-   pm2 restart all  # Or however you restart your app
-   ```
+## Solution Options
 
-2. **Test PDF generation**
-   - Try generating an LR receipt from the frontend
-   - Check the logs: `pm2 logs` or your log viewer
-   - You should see: "Attempting to use @sparticuz/chromium..."
-
-3. **If it still fails**, check the logs for the exact error
-
-## Alternative: Install Chrome on VPS (Not Recommended)
-
-If you really want to use system Chrome instead of the package:
+### Option 1: Install Chromium on VPS (Recommended for VPS)
 
 ```bash
 # For Ubuntu/Debian VPS
 sudo apt-get update
 sudo apt-get install -y chromium-browser
 
-# Then update .env with the correct path
+# For CentOS/RHEL VPS
+sudo yum install -y chromium
+
+# For Amazon Linux 2
+sudo amazon-linux-extras install epel -y
+sudo yum install -y chromium
+```
+
+After installation, find the Chromium path:
+```bash
+which chromium-browser
+# or
+which chromium
+```
+
+Then update your `.env` file:
+```env
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# or
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+```
+
+### Option 2: Use Chrome Binary (Alternative)
+
+```bash
+# Download and install Chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+
+# Verify installation
+which google-chrome
+```
+
+Update `.env`:
+```env
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+```
+
+### Option 3: Install Required Dependencies
+
+Sometimes Chromium is installed but missing dependencies:
+
+```bash
+# Install dependencies
+sudo apt-get install -y \
+    ca-certificates \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgbm1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    lsb-release \
+    wget \
+    xdg-utils
+```
+
+### Option 4: Use Puppeteer (Full Package) Instead of puppeteer-core
+
+If you want Puppeteer to download and manage Chrome automatically:
+
+```bash
+# Install full puppeteer (includes Chrome)
+npm install puppeteer
+
+# Remove puppeteer-core
+npm uninstall puppeteer-core
+```
+
+Then update `package.json` to use `puppeteer` instead of `puppeteer-core`.
+
+**Note**: This will increase deployment size significantly (~300MB).
+
+---
+
+## Quick Fix for Your VPS
+
+Run these commands on your VPS:
+
+```bash
+# 1. Update package list
+sudo apt-get update
+
+# 2. Install Chromium
+sudo apt-get install -y chromium-browser
+
+# 3. Find the path
+which chromium-browser
+
+# 4. Test if it works
+chromium-browser --version
+```
+
+Then add to your `.env` file on the VPS:
+```env
 PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ```
 
-But using `@sparticuz/chromium` is better because:
-- No system dependencies
-- Consistent across environments
-- Easier to maintain
-- Works on Render, AWS Lambda, and VPS
-
-## Environment Variables
-
-### Current Setup (Recommended)
+Restart your Node.js application:
 ```bash
-# .env
-# PUPPETEER_EXECUTABLE_PATH is commented out
-# Will use @sparticuz/chromium automatically
+pm2 restart all
+# or
+sudo systemctl restart your-app-service
 ```
 
-### For Render (Already Handled)
+---
+
+## Testing
+
+After installation, test the PDF generation:
+
 ```bash
-RENDER=true  # Automatically set by Render
+# SSH into your VPS
+ssh user@your-vps-ip
+
+# Test Chromium
+chromium-browser --version
+# or
+google-chrome --version
+
+# Check if the path exists
+ls -la /usr/bin/chromium-browser
+# or
+ls -la /usr/bin/google-chrome
+
+# Restart your app
+pm2 restart all
 ```
 
-### For Custom Chrome Path (If Needed)
-```bash
-PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
+Then try generating an LR receipt from the frontend.
+
+---
+
+## Environment-Specific Configuration
+
+Your `.env` should look like this:
+
+**For VPS (after installing Chromium):**
+```env
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ```
 
-## Affected Endpoints
-
-These endpoints generate PDFs and are now fixed:
-- `GET /api/parcel/generate-lr-receipt/:id` - Standard LR receipt
-- `GET /api/parcel/preview-lr-thermal/:id` - Thermal receipt preview
-- Any other endpoint using Puppeteer
-
-## Logs to Watch For
-
-**Success:**
-```
-Configuring Puppeteer launch options...
-Attempting to use @sparticuz/chromium...
-Chromium path: /tmp/chromium-...
+**For Render (using @sparticuz/chromium):**
+```env
+# Leave commented - Render will use @sparticuz/chromium automatically
+# PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 ```
 
-**Failure (old error):**
+**For Local Development:**
+```env
+# Leave commented - will use locally installed Chrome
+# PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 ```
-Browser was not found at the configured executablePath (/usr/bin/google-chrome)
-```
+
+---
 
 ## Troubleshooting
 
-### Error: "Cannot find module '@sparticuz/chromium'"
-```bash
-npm install @sparticuz/chromium
-```
+### Error: "Failed to launch the browser process"
+- Install missing dependencies (see Option 3 above)
+- Check if Chromium is executable: `chmod +x /usr/bin/chromium-browser`
 
-### Error: "Chromium not available"
-The code will fall back to default Puppeteer. Check if puppeteer is installed:
-```bash
-npm install puppeteer-core
-```
+### Error: "Running as root without --no-sandbox is not supported"
+- The code already includes `--no-sandbox` flag, so this should work
 
-### Still getting Chrome path error
-Make sure you've:
-1. Pulled the latest code
-2. Commented out `PUPPETEER_EXECUTABLE_PATH` in .env
-3. Restarted your Node.js process
+### Error: "libgobject-2.0.so.0: cannot open shared object file"
+- Install missing libraries: `sudo apt-get install -y libglib2.0-0`
 
-## Production Checklist
+### Still not working?
+- Check logs: `pm2 logs` or `journalctl -u your-service -f`
+- Verify environment variable is loaded: `echo $PUPPETEER_EXECUTABLE_PATH`
+- Try using full path in code instead of env variable
 
-- [x] Updated parcelController.js with helper function
-- [x] Commented out incorrect Chrome path in .env
-- [x] @sparticuz/chromium package is installed
-- [ ] Deploy to VPS
-- [ ] Restart Node.js process
-- [ ] Test PDF generation
-- [ ] Monitor logs for any errors
+---
 
-## Support
+## Alternative: Use a Different PDF Library
 
-If you still face issues:
-1. Check the exact error message in logs
-2. Verify @sparticuz/chromium version: `npm list @sparticuz/chromium`
-3. Check Node.js version: `node --version` (should be 18+)
-4. Check available memory on VPS: `free -h` (Chromium needs ~200MB)
+If Puppeteer continues to cause issues, consider using a lighter PDF library:
+
+- **pdfkit**: Pure JavaScript, no browser needed
+- **html-pdf-node**: Lighter alternative
+- **jsPDF**: Client-side PDF generation
+
+However, these would require rewriting your PDF generation logic.
+
+---
+
+## Summary
+
+**Quickest Solution for VPS:**
+1. `sudo apt-get update && sudo apt-get install -y chromium-browser`
+2. Add `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser` to `.env`
+3. Restart your app
+
+This should resolve the issue immediately.

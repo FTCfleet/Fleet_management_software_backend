@@ -1,6 +1,68 @@
-# Recent Fixes - January 31, 2026
+# Recent Fixes - February 2, 2026
 
-## 1. CORS Configuration Update ✅
+## 1. VPS Puppeteer Configuration Fix ✅
+
+**Issue**: PDF generation failing on VPS with error:
+```
+Browser was not found at the configured executablePath (/usr/bin/google-chrome)
+```
+
+**Root Cause**: Chrome/Chromium not installed on VPS, and Puppeteer cannot find a browser executable.
+
+**Fix Applied**:
+
+### Code Changes (`controllers/parcelController.js`):
+- Enhanced `getPuppeteerLaunchOptions()` function
+- Added automatic detection of common Chromium paths on Linux:
+  - `/usr/bin/chromium-browser`
+  - `/usr/bin/chromium`
+  - `/usr/bin/google-chrome`
+  - `/usr/bin/google-chrome-stable`
+  - `/snap/bin/chromium`
+- Added path existence verification before using custom path
+- Added `--disable-dev-shm-usage` flag for better VPS compatibility
+- Improved error logging with helpful installation instructions
+
+### Installation Script Created:
+- `install-chromium-vps.sh` - Automated Chromium installation for VPS
+- Detects OS (Ubuntu/Debian/CentOS/Amazon Linux)
+- Installs Chromium and all required dependencies
+- Provides next steps for configuration
+
+### Documentation Created:
+- `VPS_PUPPETEER_FIX.md` - Comprehensive troubleshooting guide
+- Multiple solution options
+- Step-by-step installation instructions
+- Environment-specific configurations
+- Troubleshooting section
+
+**Quick Fix for VPS**:
+```bash
+# Option 1: Use the automated script
+chmod +x install-chromium-vps.sh
+./install-chromium-vps.sh
+
+# Option 2: Manual installation
+sudo apt-get update
+sudo apt-get install -y chromium-browser
+
+# Then add to .env (optional, code will auto-detect):
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Restart your app
+pm2 restart all
+```
+
+**Benefits**:
+- Automatic browser detection (no .env changes needed in most cases)
+- Better error messages with actionable instructions
+- Support for multiple Linux distributions
+- Fallback chain for maximum compatibility
+- Improved VPS stability with additional Chrome flags
+
+---
+
+## 2. CORS Configuration Update ✅
 
 **File**: `index.js`
 

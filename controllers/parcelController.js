@@ -21,12 +21,18 @@ const { toDbValue } = require("../utils/currencyUtils.js");
 const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
 
 // Helper function to get Puppeteer launch options
+// Priority order:
+// 1. RENDER/AWS Lambda → @sparticuz/chromium (cloud-optimized)
+// 2. PUPPETEER_EXECUTABLE_PATH env var → custom path
+// 3. Auto-detect common paths → VPS installations
+// 4. Fallback to @sparticuz/chromium
 const getPuppeteerLaunchOptions = async () => {
     console.log('Configuring Puppeteer launch options...');
     
-    // Check if running on Render or AWS Lambda
+    // PRIORITY 1: Check if running on Render or AWS Lambda
+    // This MUST be checked first to ensure cloud platforms use @sparticuz/chromium
     if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-        console.log('Cloud environment detected - using @sparticuz/chromium');
+        console.log('✓ Cloud environment detected (Render/Lambda) - using @sparticuz/chromium');
         return {
             args: chromium.args,
             executablePath: await chromium.executablePath(),
@@ -34,19 +40,45 @@ const getPuppeteerLaunchOptions = async () => {
         };
     }
     
-    // Check if custom Chrome path is specified
+    // PRIORITY 2: Check if custom Chrome path is specified (for VPS)
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         console.log(`Using custom Chrome path: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-        return {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        };
+        // Verify the path exists
+        if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+            return {
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+            };
+        } else {
+            console.error(`Chrome not found at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+        }
     }
     
-    // Try to use @sparticuz/chromium as fallback for VPS
+    // PRIORITY 3: Try common Chromium/Chrome paths on Linux VPS
+    // This only runs if NOT on Render/Lambda and no custom path set
+    const commonPaths = [
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/snap/bin/chromium',
+    ];
+    
+    for (const chromePath of commonPaths) {
+        if (fs.existsSync(chromePath)) {
+            console.log(`✓ Found Chrome/Chromium at: ${chromePath} (VPS mode)`);
+            return {
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                executablePath: chromePath,
+            };
+        }
+    }
+    
+    // PRIORITY 4: Try to use @sparticuz/chromium as fallback
     try {
-        console.log('Attempting to use @sparticuz/chromium...');
+        console.log('Attempting to use @sparticuz/chromium as fallback...');
         const chromiumPath = await chromium.executablePath();
         console.log(`Chromium path: ${chromiumPath}`);
         return {
@@ -55,13 +87,18 @@ const getPuppeteerLaunchOptions = async () => {
             headless: chromium.headless,
         };
     } catch (e) {
-        console.log('Chromium not available, using default Puppeteer');
-        // Last resort - let Puppeteer find Chrome
-        return {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        };
+        console.error('Failed to get chromium path:', e.message);
     }
+    
+    // Last resort - let Puppeteer find Chrome (will likely fail on VPS)
+    console.warn('⚠️  WARNING: No Chrome/Chromium found. PDF generation may fail.');
+    console.warn('⚠️  Please install Chromium: sudo apt-get install -y chromium-browser');
+    console.warn('⚠️  Or set PUPPETEER_EXECUTABLE_PATH in .env file');
+    
+    return {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    };
 };
 
 const normalizeString = (value) => typeof value === 'string' ? value.trim() : '';
