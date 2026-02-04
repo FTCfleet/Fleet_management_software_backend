@@ -41,7 +41,8 @@ const corsOptions = {
         'http://friendstransport.in',
         'https://www.friendstransport.in',
         'http://www.friendstransport.in',
-        'https://ftcfleet.netlify.app'
+        'https://ftcfleet.netlify.app',
+        'http://localhost:5173'
     ],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']

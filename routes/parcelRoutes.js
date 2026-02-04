@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const catchAsync = require("../utils/catchAsync.js");
 const parcelController = require("../controllers/parcelController.js");
+const networkPrintController = require("../controllers/networkPrintController.js");
 const { authenticateToken, isSupervisor, isAppUser } = require("../middleware/auth.js");
 
 router.route('/new')
@@ -27,6 +28,14 @@ router.route('/generate-lr-receipt-thermal/:id')
 
 router.route('/generate-lr-receipt-thermal-escpos/:id')
     .get(catchAsync(parcelController.generateLRThermalESCPOS))
+
+// Network printing endpoint - send ESC/POS commands directly to WiFi printer
+router.route('/print/thermal-network')
+    .post(catchAsync(networkPrintController.printToNetworkPrinter))
+
+// Discover network printers using mDNS/Bonjour
+router.route('/print/discover-printers')
+    .get(catchAsync(networkPrintController.discoverPrinters))
 
 router.route('/preview-lr-thermal/:id')
     .get(catchAsync(parcelController.previewLRThermal))

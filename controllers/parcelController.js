@@ -17,6 +17,8 @@ const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
 const fs = require('fs');
 const path = require('path');
 const { toDbValue } = require("../utils/currencyUtils.js");
+const { sendOrderBookedMessage } = require("../utils/whatsappMessageSender.js");
+const { sendOrderBookedViaZavu, logNotification } = require("../utils/zavuMessageSender.js");
 
 const ITEM_TYPE_COLLATION = { locale: 'en', strength: 2 };
 
@@ -397,6 +399,41 @@ module.exports.newParcel = async (req, res) => {
                 paymentStatus: 'To Pay'
             });
         }
+
+        // Send notification to receiver (Zavu with auto WhatsApp/SMS fallback)
+        // COMMENTED OUT - Enable when notification system is ready
+        /*
+        try {
+            // Try Zavu first (auto WhatsApp/SMS fallback)
+            const zavuResult = await sendOrderBookedViaZavu(receiverDetails.phoneNo, trackingId);
+            
+            await logNotification({
+                lrNumber: trackingId,
+                phoneNumber: receiverDetails.phoneNo,
+                channel: zavuResult.channel,
+                success: zavuResult.success,
+                messageId: zavuResult.messageId,
+                error: zavuResult.error
+            });
+            
+            if (zavuResult.success) {
+                console.log(`✓ Order notification sent via ${zavuResult.channel.toUpperCase()} for LR: ${trackingId}`);
+            } else {
+                console.log(`⚠️ Zavu notification failed for LR: ${trackingId}, trying WhatsApp directly...`);
+                
+                // Fallback to direct WhatsApp (if Zavu fails)
+                try {
+                    await sendOrderBookedMessage(receiverDetails.phoneNo, trackingId);
+                    console.log(`✓ Fallback WhatsApp notification sent for LR: ${trackingId}`);
+                } catch (whatsappErr) {
+                    console.error(`❌ Both Zavu and WhatsApp failed for LR: ${trackingId}`);
+                }
+            }
+        } catch (notificationErr) {
+            // Don't fail the order creation if notification fails
+            console.error('❌ Notification system error:', notificationErr.message);
+        }
+        */
 
         return res.status(200).json({ message: "Parcel created successfully", body: trackingId, flag: true });
 
