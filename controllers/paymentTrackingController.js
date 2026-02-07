@@ -2,6 +2,7 @@ const PaymentTracking = require('../models/paymentTrackingSchema.js');
 const Parcel = require('../models/parcelSchema.js');
 const Ledger = require('../models/ledgerSchema.js');
 const catchAsync = require('../utils/catchAsync.js');
+const { fromDbValueNum } = require('../utils/currencyUtils.js');
 
 // Get all To Pay parcels with payment tracking status
 module.exports.getToPayParcels = catchAsync(async (req, res) => {
@@ -537,5 +538,275 @@ module.exports.getMemoDetails = catchAsync(async (req, res) => {
         flag: true,
         message: 'Memo details fetched successfully',
         data: memoDetails
+    });
+});
+
+
+// Get payment tracking grouped by receiver (for 1 month)
+module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
+    const { warehouseCode, role } = req.user;
+    const { startDate, endDate } = req.query;
+
+    // Default to 1 month back if not provided
+    const end = endDate ? new Date(endDate) : new Date();
+    end.setHours(23, 59, 59, 999);
+    
+    const start = startDate ? new Date(startDate) : new Date();
+    if (!startDate) {
+        start.setMonth(start.getMonth() - 1);
+    }
+    start.setHours(0, 0, 0, 0);
+
+    // Build query for parcels - use placedAt (when order was created)
+    let parcelQuery = {
+        payment: 'To Pay',
+        status: 'delivered',
+        placedAt: { $gte: start, $lte: end }
+    };
+
+    // Access control: Admin can view all, staff/supervisor can view their warehouse
+    console.log('🔐 Access check - Role:', role, 'Has warehouseCode:', !!warehouseCode);
+    
+    if (role === 'admin') {
+        // Admin can see all warehouses - no filter needed
+        console.log('✓ Admin access granted');
+    } else if (role === 'staff' || role === 'supervisor') {
+        // Staff/Supervisor can only see their destination warehouse
+        if (warehouseCode && warehouseCode._id) {
+            parcelQuery.destinationWarehouse = warehouseCode._id;
+            console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
+        } else {
+            console.log('⚠️ Staff/Supervisor has no warehouseCode, showing all');
+            // If staff has no warehouse, show nothing (empty result)
+            parcelQuery.destinationWarehouse = null;
+        }
+    } else {
+        console.log('❌ Access denied - Role:', role);
+        return res.status(403).json({
+            flag: false,
+            message: 'You do not have access to payment tracking'
+        });
+    }
+
+    // Debug logging
+    console.log('📊 Receiver-wise query:', JSON.stringify(parcelQuery, null, 2));
+    console.log('📅 Date range:', { start, end });
+    console.log('👤 User role:', role, 'Warehouse:', warehouseCode?._id);
+
+    // Fetch parcels with populated data
+    const parcels = await Parcel.find(parcelQuery)
+        .populate('receiver')
+        .populate('sender')
+        .populate('ledgerId')
+        .populate('sourceWarehouse')
+        .populate('destinationWarehouse')
+        .sort({ 'receiver.name': 1, placedAt: -1 });
+
+    console.log(`✓ Found ${parcels.length} parcels`);
+
+    // Get payment tracking for all parcels with populated receivedBy
+    const parcelIds = parcels.map(p => p._id);
+    const paymentTrackings = await PaymentTracking.find({ parcel: { $in: parcelIds } })
+        .populate('receivedBy');
+
+    // Create tracking map
+    const trackingMap = {};
+    paymentTrackings.forEach(pt => {
+        trackingMap[pt.parcel.toString()] = pt;
+    });
+
+    // Format response as array of orders (frontend will group them)
+    const result = parcels.map(parcel => {
+        const tracking = trackingMap[parcel._id.toString()];
+        
+        return {
+            trackingId: parcel.trackingId,
+            memoId: parcel.ledgerId ? parcel.ledgerId.ledgerId : 'N/A',
+            receiver: {
+                name: parcel.receiver ? parcel.receiver.name : 'Unknown',
+                phoneNo: parcel.receiver ? parcel.receiver.phoneNo : ''
+            },
+            sender: {
+                name: parcel.sender ? parcel.sender.name : 'Unknown'
+            },
+            sourceWarehouse: parcel.sourceWarehouse ? {
+                name: parcel.sourceWarehouse.name,
+                warehouseID: parcel.sourceWarehouse.warehouseID
+            } : null,
+            destinationWarehouse: parcel.destinationWarehouse ? {
+                name: parcel.destinationWarehouse.name,
+                warehouseID: parcel.destinationWarehouse.warehouseID
+            } : null,
+            freight: parcel.freight || 0,
+            hamali: parcel.hamali || 0,
+            isDoorDelivery: parcel.isDoorDelivery || false,
+            doorDeliveryCharge: parcel.doorDeliveryCharge || 0,
+            status: parcel.status,
+            payment: parcel.payment,
+            placedAt: parcel.placedAt,
+            createdAt: parcel.createdAt,
+            dispatchedAt: parcel.dispatchedAt || null,
+            deliveredAt: parcel.deliveredAt || null,
+            paymentTracking: tracking ? {
+                paymentStatus: tracking.paymentStatus,
+                receivedBy: tracking.receivedBy ? {
+                    username: tracking.receivedBy.username,
+                    name: tracking.receivedBy.name
+                } : null,
+                receivedAt: tracking.receivedAt
+            } : {
+                paymentStatus: 'To Pay',
+                receivedBy: null,
+                receivedAt: null
+            }
+        };
+    });
+
+    res.status(200).json({
+        flag: true,
+        message: 'Receiver-wise payment data fetched successfully',
+        body: result
+    });
+});
+
+// Batch update payment status for receiver-wise view (across multiple memos)
+module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res) => {
+    const { orderIds, startDate, endDate } = req.body;
+    const userId = req.user._id;
+
+    if (!Array.isArray(orderIds)) {
+        return res.status(400).json({
+            flag: false,
+            message: 'orderIds must be an array'
+        });
+    }
+
+    if (!startDate || !endDate) {
+        return res.status(400).json({
+            flag: false,
+            message: 'startDate and endDate are required'
+        });
+    }
+
+    // IMPORTANT: Only destination staff/supervisor can update (not admin)
+    if (req.user.role === 'admin') {
+        return res.status(403).json({
+            flag: false,
+            message: 'Admin cannot update payment status. Only destination warehouse staff can.'
+        });
+    }
+
+    if ((req.user.role !== 'staff' && req.user.role !== 'supervisor') || !req.user.warehouseCode) {
+        return res.status(403).json({
+            flag: false,
+            message: 'You do not have access to update payments'
+        });
+    }
+
+    // Parse dates
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build query for parcels in date range - use placedAt (when order was created)
+    let parcelQuery = {
+        payment: 'To Pay',
+        status: 'delivered',
+        destinationWarehouse: req.user.warehouseCode._id,
+        placedAt: { $gte: start, $lte: end }
+    };
+
+    // Get all delivered "To Pay" parcels in the date range for this warehouse
+    const parcels = await Parcel.find(parcelQuery);
+
+    if (parcels.length === 0) {
+        return res.status(404).json({
+            flag: false,
+            message: 'No delivered To Pay orders found in this date range'
+        });
+    }
+
+    const trackingIdSet = new Set(orderIds);
+    const parcelIds = parcels.map(p => p._id);
+
+    // Get existing payment trackings for bulk operations
+    const existingTrackings = await PaymentTracking.find({ parcel: { $in: parcelIds } });
+    const trackingMap = new Map();
+    existingTrackings.forEach(pt => {
+        trackingMap.set(pt.parcel.toString(), pt);
+    });
+
+    // Prepare bulk operations
+    const bulkOps = [];
+    const newTrackings = [];
+    let updatedCount = 0;
+
+    for (const parcel of parcels) {
+        const shouldBeReceived = trackingIdSet.has(parcel.trackingId);
+        const existingTracking = trackingMap.get(parcel._id.toString());
+
+        if (shouldBeReceived) {
+            // Mark as Payment Received
+            if (existingTracking) {
+                // Only update if status is changing
+                if (existingTracking.paymentStatus !== 'Payment Received') {
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { _id: existingTracking._id },
+                            update: {
+                                paymentStatus: 'Payment Received',
+                                receivedBy: userId,
+                                receivedAt: new Date()
+                            }
+                        }
+                    });
+                    updatedCount++;
+                }
+            } else {
+                newTrackings.push({
+                    parcel: parcel._id,
+                    paymentStatus: 'Payment Received',
+                    receivedBy: userId,
+                    receivedAt: new Date()
+                });
+                updatedCount++;
+            }
+        } else {
+            // Mark as To Pay (only if it was previously marked as received)
+            if (existingTracking && existingTracking.paymentStatus === 'Payment Received') {
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: existingTracking._id },
+                        update: {
+                            paymentStatus: 'To Pay',
+                            receivedBy: null,
+                            receivedAt: null
+                        }
+                    }
+                });
+                updatedCount++;
+            }
+        }
+    }
+
+    // Execute bulk operations
+    if (bulkOps.length > 0) {
+        await PaymentTracking.bulkWrite(bulkOps);
+    }
+
+    if (newTrackings.length > 0) {
+        await PaymentTracking.insertMany(newTrackings);
+    }
+
+    res.status(200).json({
+        flag: true,
+        message: 'Payment status updated successfully',
+        receivedBy: {
+            username: req.user.username,
+            name: req.user.name
+        },
+        receivedAt: new Date(),
+        updatedCount: updatedCount
     });
 });
