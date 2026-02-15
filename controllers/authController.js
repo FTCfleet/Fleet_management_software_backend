@@ -114,7 +114,7 @@ module.exports.getOTP= async (req, res) => {
         console.log(username)
         const employee = await Employee.findOne({ username });
 
-        console.log(employee)
+        // console.log(employee)
 
         if (!employee) {
             return res.status(201).json({ message: 'User not found', flag: false });

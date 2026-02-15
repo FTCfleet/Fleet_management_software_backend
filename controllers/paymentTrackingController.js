@@ -1,6 +1,7 @@
 const PaymentTracking = require('../models/paymentTrackingSchema.js');
 const Parcel = require('../models/parcelSchema.js');
 const Ledger = require('../models/ledgerSchema.js');
+const Client = require('../models/clientSchema.js');
 const catchAsync = require('../utils/catchAsync.js');
 const { fromDbValueNum } = require('../utils/currencyUtils.js');
 
@@ -10,16 +11,16 @@ module.exports.getToPayParcels = catchAsync(async (req, res) => {
     const { date } = req.query;
 
     // Build query for parcels with "To Pay" payment
-    let parcelQuery = { 
+    let parcelQuery = {
         payment: 'To Pay',
         status: 'delivered'
     };
-    
+
     // If user is not admin, filter by their warehouse as destination
     if (role !== 'admin' && warehouseCode) {
         parcelQuery.destinationWarehouse = warehouseCode._id;
     }
-    
+
     // If date filter is provided
     if (date) {
         const startDate = new Date(date);
@@ -76,7 +77,7 @@ module.exports.markPaymentReceived = catchAsync(async (req, res) => {
     if (!parcel) {
         parcel = await Parcel.findById(parcelId);
     }
-    
+
     if (!parcel) {
         return res.status(404).json({
             message: 'Parcel not found',
@@ -103,7 +104,7 @@ module.exports.markPaymentReceived = catchAsync(async (req, res) => {
 
     // Update or create payment tracking
     let paymentTracking = await PaymentTracking.findOne({ parcel: parcel._id });
-    
+
     if (paymentTracking) {
         paymentTracking.paymentStatus = 'Payment Received';
         paymentTracking.receivedBy = userId;
@@ -137,7 +138,7 @@ module.exports.markPaymentToPay = catchAsync(async (req, res) => {
     if (!parcel) {
         parcel = await Parcel.findById(parcelId);
     }
-    
+
     if (!parcel) {
         return res.status(404).json({
             message: 'Parcel not found',
@@ -164,7 +165,7 @@ module.exports.markPaymentToPay = catchAsync(async (req, res) => {
 
     // Update or create payment tracking
     let paymentTracking = await PaymentTracking.findOne({ parcel: parcel._id });
-    
+
     if (paymentTracking) {
         paymentTracking.paymentStatus = 'To Pay';
         paymentTracking.receivedBy = null;
@@ -191,12 +192,12 @@ module.exports.getMemosWithToPayOrders = catchAsync(async (req, res) => {
 
     // Build query for ledgers
     let ledgerQuery = {};
-    
+
     // If user is not admin, filter by their warehouse as destination
     if (role !== 'admin' && warehouseCode) {
         ledgerQuery.destinationWarehouse = warehouseCode._id;
     }
-    
+
     // If date filter is provided, filter by dispatchedAt
     if (date) {
         const startDate = new Date(date);
@@ -224,13 +225,13 @@ module.exports.getMemosWithToPayOrders = catchAsync(async (req, res) => {
 
     // Filter ledgers that have at least one delivered "To Pay" order
     const ledgersWithToPay = [];
-    
+
     for (const ledger of ledgers) {
         // Filter to only delivered "To Pay" orders
         const deliveredToPayOrders = ledger.parcels.filter(
             parcel => parcel.payment === 'To Pay' && parcel.status === 'delivered'
         );
-        
+
         if (deliveredToPayOrders.length > 0) {
             // Get payment tracking for these parcels
             const parcelIds = deliveredToPayOrders.map(p => p._id);
@@ -541,21 +542,24 @@ module.exports.getMemoDetails = catchAsync(async (req, res) => {
     });
 });
 
-
 // Get payment tracking grouped by receiver (for 1 month)
 module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
     const { warehouseCode, role } = req.user;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, page: pageParam, receiverName, trackingId } = req.query;
 
-    // Default to 1 month back if not provided
-    const end = endDate ? new Date(endDate + 'T23:59:59+05:30') : new Date();
+    // Pagination
+    const page = Math.max(1, parseInt(pageParam) || 1);
+    const PAGE_SIZE = 200;
     
-    const start = startDate ? new Date(startDate + 'T00:00:00+05:30') : new Date();
+    const start = startDate ? new Date(startDate + 'T00:00:00.000Z') : new Date();
     if (!startDate) {
         start.setMonth(start.getMonth() - 1);
     }
+    // Default to 1 month back if not provided
+    const end = endDate ? new Date(endDate + 'T23:59:59.999Z') : new Date();
 
-    // Build query for parcels - use placedAt (when order was created)
+
+    // Build base query for parcels - used for aggregation (unaffected by search)
     let parcelQuery = {
         payment: 'To Pay',
         status: 'delivered',
@@ -563,49 +567,90 @@ module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
     };
 
     // Access control: Admin can view all, staff/supervisor can view their warehouse
-    console.log('🔐 Access check - Role:', role, 'Has warehouseCode:', !!warehouseCode);
-    
     if (role === 'admin') {
         // Admin can see all warehouses - no filter needed
-        console.log('✓ Admin access granted');
     } else if (role === 'staff' || role === 'supervisor') {
         // Staff/Supervisor can only see their destination warehouse
         if (warehouseCode && warehouseCode._id) {
             parcelQuery.destinationWarehouse = warehouseCode._id;
-            console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
         } else {
-            console.log('⚠️ Staff/Supervisor has no warehouseCode, showing all');
             // If staff has no warehouse, show nothing (empty result)
             parcelQuery.destinationWarehouse = null;
         }
     } else {
-        console.log('❌ Access denied - Role:', role);
         return res.status(403).json({
             flag: false,
             message: 'You do not have access to payment tracking'
         });
     }
 
-    // Debug logging
-    console.log('📊 Receiver-wise query:', JSON.stringify(parcelQuery, null, 2));
-    console.log('📅 Date range:', { start, end });
-    console.log('👤 User role:', role, 'Warehouse:', warehouseCode?._id);
+    // Build filtered query (extends base query with search filters)
+    // let filteredQuery = { ...parcelQuery };
 
-    // Fetch parcels with populated data
-    const parcels = await Parcel.find(parcelQuery)
-        .populate('receiver')
-        .populate('sender')
-        .populate('ledgerId')
-        .populate('sourceWarehouse')
-        .populate('destinationWarehouse')
-        .sort({ 'receiver.name': 1, placedAt: -1 });
+    if (receiverName && receiverName.trim()) {
+        // Find matching receiver Client IDs by partial name (case-insensitive)
+        const matchingClients = await Client.find(
+            { name: { $regex: receiverName.trim(), $options: 'i' }, role: 'receiver' },
+            { _id: 1 }
+        ).lean();
+        parcelQuery.receiver = { $in: matchingClients.map(c => c._id) };
+    } else if (trackingId && trackingId.trim()) {
+        // Partial match on trackingId (case-insensitive)
+        parcelQuery.trackingId = { $regex: trackingId.trim(), $options: 'i' };
+    }
 
-    console.log(`✓ Found ${parcels.length} parcels`);
+    // Get filtered count + paginated results, and aggregate totals (on base query) in parallel
+    const [totalParcels, parcels, amountAggregation] = await Promise.all([
+        Parcel.countDocuments(parcelQuery),
+        Parcel.find(parcelQuery)
+            .populate('receiver')
+            .populate('sender')
+            .populate('ledgerId')
+            .populate('sourceWarehouse')
+            .populate('destinationWarehouse')
+            .sort({ 'receiver.name': 1, placedAt: -1 })
+            .skip((page - 1) * PAGE_SIZE)
+            .limit(PAGE_SIZE)
+            .lean(),
+        // Aggregate totalAmount and totalAmountReceived across ALL matching parcels
+        Parcel.aggregate([
+            { $match: parcelQuery },
+            {
+                $lookup: {
+                    from: 'paymenttrackings',
+                    localField: '_id',
+                    foreignField: 'parcel',
+                    as: 'tracking'
+                }
+            },
+            { $unwind: { path: '$tracking', preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: null,
+                    totalAmount: {
+                        $sum: { $add: [{ $toDouble: { $ifNull: ['$freight', 0] } }, { $multiply: [{ $toDouble: { $ifNull: ['$hamali', 0] } }, 2] }] }
+                    },
+                    totalAmountReceived: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$tracking.paymentStatus', 'Payment Received'] },
+                                { $add: [{ $toDouble: { $ifNull: ['$freight', 0] } }, { $multiply: [{ $toDouble: { $ifNull: ['$hamali', 0] } }, 2] }] },
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ])
+    ]);
 
-    // Get payment tracking for all parcels with populated receivedBy
+    const { totalAmount = 0, totalAmountReceived = 0 } = amountAggregation[0] || {};
+
+    // Get payment tracking for fetched parcels only (not all)
     const parcelIds = parcels.map(p => p._id);
     const paymentTrackings = await PaymentTracking.find({ parcel: { $in: parcelIds } })
-        .populate('receivedBy');
+        .populate('receivedBy')
+        .lean();
 
     // Create tracking map
     const trackingMap = {};
@@ -616,7 +661,7 @@ module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
     // Format response as array of orders (frontend will group them)
     const result = parcels.map(parcel => {
         const tracking = trackingMap[parcel._id.toString()];
-        
+
         return {
             trackingId: parcel.trackingId,
             memoId: parcel.ledgerId ? parcel.ledgerId.ledgerId : 'N/A',
@@ -660,10 +705,17 @@ module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
         };
     });
 
-    res.status(200).json({
-        flag: true,
-        message: 'Receiver-wise payment data fetched successfully',
-        body: result
+    return res.status(200).json({
+        body: {
+            result: result,
+            page: page,
+            pageSize: PAGE_SIZE,
+            totalPages: totalParcels === 0 ? 0 : Math.ceil(totalParcels / PAGE_SIZE),
+            totalParcels,
+            totalAmount: Math.round(totalAmount * 100) / 100,
+            totalAmountReceived: Math.round(totalAmountReceived * 100) / 100
+        },
+        message: "Successfully fetched parcels", flag: true
     });
 });
 
@@ -681,8 +733,8 @@ module.exports.getPaidLRs = catchAsync(async (req, res) => {
 
     // Parse dates in IST timezone (UTC+5:30)
     // When frontend sends "2026-02-15", we need to treat it as IST, not UTC
-    const start = new Date(startDate + 'T00:00:00+05:30');
-    const end = new Date(endDate + 'T23:59:59+05:30');
+    const start = new Date(startDate + 'T00:00:00.000Z');
+    const end = new Date(endDate + 'T23:59:59.999Z');
 
     // Build query for paid parcels
     let parcelQuery = {
@@ -692,12 +744,12 @@ module.exports.getPaidLRs = catchAsync(async (req, res) => {
     // Access control: Admin can view all, staff/supervisor can view their warehouse
     if (role === 'admin') {
         // Admin can see all warehouses
-        console.log('✓ Admin access granted for paid LRs');
+        // console.log('✓ Admin access granted for paid LRs');
     } else if (role === 'staff' || role === 'supervisor') {
         // Staff/Supervisor can see their destination warehouse
         if (warehouseCode && warehouseCode._id) {
             parcelQuery.destinationWarehouse = warehouseCode._id;
-            console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
+            // console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
         } else {
             // If staff has no warehouse, show nothing
             parcelQuery.destinationWarehouse = null;
@@ -712,9 +764,9 @@ module.exports.getPaidLRs = catchAsync(async (req, res) => {
     // Add date filter - use placedAt (when order was created)
     parcelQuery.placedAt = { $gte: start, $lte: end };
 
-    console.log('📊 Paid LRs query:', JSON.stringify(parcelQuery, null, 2));
-    console.log('📅 Date range (IST):', { startDate, endDate });
-    console.log('📅 Date range (UTC):', { start, end });
+    // console.log('📊 Paid LRs query:', JSON.stringify(parcelQuery, null, 2));
+    // console.log('📅 Date range (IST):', { startDate, endDate });
+    // console.log('📅 Date range (UTC):', { start, end });
 
     // Fetch paid parcels
     const parcels = await Parcel.find(parcelQuery)
@@ -725,15 +777,15 @@ module.exports.getPaidLRs = catchAsync(async (req, res) => {
         .populate('ledgerId')
         .sort({ placedAt: -1 });
 
-    console.log(`✓ Found ${parcels.length} paid LRs`);
-    
+    // console.log(`✓ Found ${parcels.length} paid LRs`);
+
     // Debug: Log first few parcels with their placedAt times
-    if (parcels.length > 0) {
-        console.log('📋 Sample parcels:');
-        parcels.slice(0, 5).forEach((p, i) => {
-            console.log(`  ${i+1}. ${p.trackingId} - placedAt: ${p.placedAt.toISOString()} (IST: ${p.placedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
-        });
-    }
+    // if (parcels.length > 0) {
+    //     console.log('📋 Sample parcels:');
+    //     parcels.slice(0, 5).forEach((p, i) => {
+    //         console.log(`  ${i+1}. ${p.trackingId} - placedAt: ${p.placedAt.toISOString()} (IST: ${p.placedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
+    //     });
+    // }
 
     // Format response
     const result = parcels.map(parcel => ({
@@ -807,8 +859,8 @@ module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res
     }
 
     // Parse dates in IST timezone
-    const start = new Date(startDate + 'T00:00:00+05:30');
-    const end = new Date(endDate + 'T23:59:59+05:30');
+    const start = new Date(startDate + 'T00:00:00.000Z');
+    const end = new Date(endDate + 'T23:59:59.999Z');
 
     // Build query for parcels in date range - use placedAt (when order was created)
     let parcelQuery = {

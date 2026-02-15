@@ -35,7 +35,6 @@ const paymentTrackingSchema = new mongoose.Schema({
 });
 
 // Index for efficient queries
-paymentTrackingSchema.index({ parcel: 1 });
 paymentTrackingSchema.index({ paymentStatus: 1 });
 paymentTrackingSchema.index({ createdAt: -1 });
 
