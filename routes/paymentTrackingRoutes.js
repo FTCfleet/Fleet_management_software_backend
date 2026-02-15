@@ -12,6 +12,9 @@ router.get('/memos', protect, paymentTrackingController.getMemosWithToPayOrders)
 // Get payment tracking grouped by receiver (1 month view)
 router.get('/receiver-wise', protect, paymentTrackingController.getPaymentsByReceiver);
 
+// Get all paid LRs (regardless of status)
+router.get('/paid-lrs', protect, paymentTrackingController.getPaidLRs);
+
 // Batch update payment status for receiver-wise view (across multiple memos)
 router.patch('/batch-update-receiver-wise', protect, paymentTrackingController.batchUpdatePaymentStatusReceiverWise);
 

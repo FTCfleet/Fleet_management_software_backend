@@ -548,14 +548,12 @@ module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
     const { startDate, endDate } = req.query;
 
     // Default to 1 month back if not provided
-    const end = endDate ? new Date(endDate) : new Date();
-    end.setHours(23, 59, 59, 999);
+    const end = endDate ? new Date(endDate + 'T23:59:59+05:30') : new Date();
     
-    const start = startDate ? new Date(startDate) : new Date();
+    const start = startDate ? new Date(startDate + 'T00:00:00+05:30') : new Date();
     if (!startDate) {
         start.setMonth(start.getMonth() - 1);
     }
-    start.setHours(0, 0, 0, 0);
 
     // Build query for parcels - use placedAt (when order was created)
     let parcelQuery = {
@@ -669,6 +667,111 @@ module.exports.getPaymentsByReceiver = catchAsync(async (req, res) => {
     });
 });
 
+// Get all paid LRs (regardless of status)
+module.exports.getPaidLRs = catchAsync(async (req, res) => {
+    const { warehouseCode, role } = req.user;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+        return res.status(400).json({
+            flag: false,
+            message: 'startDate and endDate are required'
+        });
+    }
+
+    // Parse dates in IST timezone (UTC+5:30)
+    // When frontend sends "2026-02-15", we need to treat it as IST, not UTC
+    const start = new Date(startDate + 'T00:00:00+05:30');
+    const end = new Date(endDate + 'T23:59:59+05:30');
+
+    // Build query for paid parcels
+    let parcelQuery = {
+        payment: 'Paid'
+    };
+
+    // Access control: Admin can view all, staff/supervisor can view their warehouse
+    if (role === 'admin') {
+        // Admin can see all warehouses
+        console.log('✓ Admin access granted for paid LRs');
+    } else if (role === 'staff' || role === 'supervisor') {
+        // Staff/Supervisor can see their destination warehouse
+        if (warehouseCode && warehouseCode._id) {
+            parcelQuery.destinationWarehouse = warehouseCode._id;
+            console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
+        } else {
+            // If staff has no warehouse, show nothing
+            parcelQuery.destinationWarehouse = null;
+        }
+    } else {
+        return res.status(403).json({
+            flag: false,
+            message: 'You do not have access to paid LRs'
+        });
+    }
+
+    // Add date filter - use placedAt (when order was created)
+    parcelQuery.placedAt = { $gte: start, $lte: end };
+
+    console.log('📊 Paid LRs query:', JSON.stringify(parcelQuery, null, 2));
+    console.log('📅 Date range (IST):', { startDate, endDate });
+    console.log('📅 Date range (UTC):', { start, end });
+
+    // Fetch paid parcels
+    const parcels = await Parcel.find(parcelQuery)
+        .populate('sender')
+        .populate('receiver')
+        .populate('sourceWarehouse')
+        .populate('destinationWarehouse')
+        .populate('ledgerId')
+        .sort({ placedAt: -1 });
+
+    console.log(`✓ Found ${parcels.length} paid LRs`);
+    
+    // Debug: Log first few parcels with their placedAt times
+    if (parcels.length > 0) {
+        console.log('📋 Sample parcels:');
+        parcels.slice(0, 5).forEach((p, i) => {
+            console.log(`  ${i+1}. ${p.trackingId} - placedAt: ${p.placedAt.toISOString()} (IST: ${p.placedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })})`);
+        });
+    }
+
+    // Format response
+    const result = parcels.map(parcel => ({
+        trackingId: parcel.trackingId,
+        memoId: parcel.ledgerId ? parcel.ledgerId.ledgerId : 'N/A',
+        sender: {
+            name: parcel.sender ? parcel.sender.name : 'Unknown',
+            phoneNo: parcel.sender ? parcel.sender.phoneNo : ''
+        },
+        receiver: {
+            name: parcel.receiver ? parcel.receiver.name : 'Unknown',
+            phoneNo: parcel.receiver ? parcel.receiver.phoneNo : ''
+        },
+        sourceWarehouse: parcel.sourceWarehouse ? {
+            name: parcel.sourceWarehouse.name,
+            warehouseID: parcel.sourceWarehouse.warehouseID
+        } : null,
+        destinationWarehouse: parcel.destinationWarehouse ? {
+            name: parcel.destinationWarehouse.name,
+            warehouseID: parcel.destinationWarehouse.warehouseID
+        } : null,
+        freight: parcel.freight || 0,
+        hamali: parcel.hamali || 0,
+        isDoorDelivery: parcel.isDoorDelivery || false,
+        doorDeliveryCharge: parcel.doorDeliveryCharge || 0,
+        status: parcel.status,
+        payment: parcel.payment,
+        placedAt: parcel.placedAt,
+        createdAt: parcel.createdAt
+    }));
+
+    res.status(200).json({
+        flag: true,
+        message: 'Paid LRs fetched successfully',
+        body: result
+    });
+});
+
 // Batch update payment status for receiver-wise view (across multiple memos)
 module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res) => {
     const { orderIds, startDate, endDate } = req.body;
@@ -703,11 +806,9 @@ module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res
         });
     }
 
-    // Parse dates
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    // Parse dates in IST timezone
+    const start = new Date(startDate + 'T00:00:00+05:30');
+    const end = new Date(endDate + 'T23:59:59+05:30');
 
     // Build query for parcels in date range - use placedAt (when order was created)
     let parcelQuery = {
