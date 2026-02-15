@@ -4,6 +4,7 @@ const Ledger = require('../models/ledgerSchema.js');
 const Client = require('../models/clientSchema.js');
 const catchAsync = require('../utils/catchAsync.js');
 const { fromDbValueNum } = require('../utils/currencyUtils.js');
+const { getNow } = require('../utils/dateFormatter.js');
 
 // Get all To Pay parcels with payment tracking status
 module.exports.getToPayParcels = catchAsync(async (req, res) => {
@@ -108,14 +109,14 @@ module.exports.markPaymentReceived = catchAsync(async (req, res) => {
     if (paymentTracking) {
         paymentTracking.paymentStatus = 'Payment Received';
         paymentTracking.receivedBy = userId;
-        paymentTracking.receivedAt = new Date();
+        paymentTracking.receivedAt = getNow();
         await paymentTracking.save();
     } else {
         paymentTracking = await PaymentTracking.create({
             parcel: parcel._id,
             paymentStatus: 'Payment Received',
             receivedBy: userId,
-            receivedAt: new Date()
+            receivedAt: getNow()
         });
     }
 
@@ -376,7 +377,7 @@ module.exports.batchUpdatePaymentStatus = catchAsync(async (req, res) => {
                         update: {
                             paymentStatus: 'Payment Received',
                             receivedBy: userId,
-                            receivedAt: new Date()
+                            receivedAt: getNow()
                         }
                     }
                 });
@@ -385,7 +386,7 @@ module.exports.batchUpdatePaymentStatus = catchAsync(async (req, res) => {
                     parcel: parcel._id,
                     paymentStatus: 'Payment Received',
                     receivedBy: userId,
-                    receivedAt: new Date()
+                    receivedAt: getNow()
                 });
             }
         } else {
@@ -426,7 +427,7 @@ module.exports.batchUpdatePaymentStatus = catchAsync(async (req, res) => {
             username: req.user.username,
             name: req.user.name
         },
-        receivedAt: new Date(),
+        receivedAt: getNow(),
         updatedCount: deliveredToPayParcels.length
     });
 });
@@ -910,7 +911,7 @@ module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res
                             update: {
                                 paymentStatus: 'Payment Received',
                                 receivedBy: userId,
-                                receivedAt: new Date()
+                                receivedAt: getNow()
                             }
                         }
                     });
@@ -921,7 +922,7 @@ module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res
                     parcel: parcel._id,
                     paymentStatus: 'Payment Received',
                     receivedBy: userId,
-                    receivedAt: new Date()
+                    receivedAt: getNow()
                 });
                 updatedCount++;
             }
@@ -959,7 +960,7 @@ module.exports.batchUpdatePaymentStatusReceiverWise = catchAsync(async (req, res
             username: req.user.username,
             name: req.user.name
         },
-        receivedAt: new Date(),
+        receivedAt: getNow(),
         updatedCount: updatedCount
     });
 });

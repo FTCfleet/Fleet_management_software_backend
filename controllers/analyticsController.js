@@ -1,11 +1,12 @@
 const Parcel = require('../models/parcelSchema');
 const Warehouse = require('../models/warehouseSchema');
+const { getNow } = require('../utils/dateFormatter');
 
 // Get analytics dashboard data with filters
 module.exports.getDashboardAnalytics = async (req, res) => {
     try {
         const { warehouse, period = 'week', month, year } = req.query;
-        const now = new Date();
+        const now = getNow();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         // Build base match query
@@ -257,7 +258,7 @@ module.exports.getWarehouseNames = async (req, res) => {
 // Get monthly trends for detailed chart
 module.exports.getMonthlyTrends = async (req, res) => {
     const { months = 6 } = req.query;
-    const now = new Date();
+    const now = getNow();
     const startDate = new Date(now.getFullYear(), now.getMonth() - months, 1);
 
     const monthlyData = await Parcel.aggregate([

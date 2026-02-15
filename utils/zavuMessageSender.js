@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { formatToIST, getNow } = require("./dateFormatter");
 
 // Load environment variables if not already loaded
 if (!process.env.ZAVU_API_KEY) {
@@ -117,7 +118,7 @@ function formatPhoneNumber(phoneNo) {
  */
 async function logNotification(data) {
     const logEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: formatToIST(getNow()),
         lrNumber: data.lrNumber,
         phoneNumber: data.phoneNumber,
         channel: data.channel || 'failed',
