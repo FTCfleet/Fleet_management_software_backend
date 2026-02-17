@@ -749,7 +749,10 @@ module.exports.getPaidLRs = catchAsync(async (req, res) => {
     } else if (role === 'staff' || role === 'supervisor') {
         // Staff/Supervisor can see their destination warehouse
         if (warehouseCode && warehouseCode._id) {
-            parcelQuery.destinationWarehouse = warehouseCode._id;
+            parcelQuery.$or = [
+                { sourceWarehouse: warehouseCode._id },
+                { destinationWarehouse: warehouseCode._id }
+            ];
             // console.log('✓ Staff/Supervisor access granted for warehouse:', warehouseCode._id);
         } else {
             // If staff has no warehouse, show nothing
