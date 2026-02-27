@@ -1,0 +1,45 @@
+# Friends Transport Company - SEO Quick Reference
+
+## Important URLs
+- Website: https://friendstransport.in
+- Sitemap: https://friendstransport.in/sitemap.xml
+- Robots: https://friendstransport.in/robots.txt
+
+## Target Keywords
+1. transport in hyderabad
+2. friends transport company
+3. karimnagar to hyderabad transport
+4. hyderabad transport services
+5. reliable transport in telangana
+6. godavari khani to hyderabad
+7. parcel service hyderabad
+8. goods transport hyderabad
+9. cargo service telangana
+10. logistics hyderabad
+
+## Business Information
+- Name: Friends Transport Company
+- Phone: +91-7075124426
+- Service Area: Hyderabad, Secunderabad, Karimnagar, Godavari Khani, Telangana
+- Category: Transportation Service, Logistics Service
+
+## Monthly SEO Tasks
+- [ ] Update Google Business Profile (weekly)
+- [ ] Check Google Search Console for issues
+- [ ] Respond to customer reviews
+- [ ] Post on social media (3x per week)
+- [ ] Monitor keyword rankings
+- [ ] Add new content/blog posts
+
+## Tools to Use
+- Google Search Console: https://search.google.com/search-console
+- Google Business Profile: https://business.google.com
+- Google Analytics: https://analytics.google.com
+- PageSpeed Insights: https://pagespeed.web.dev
+- Mobile-Friendly Test: https://search.google.com/test/mobile-friendly
+
+## Contact for SEO Issues
+- Check server logs for crawl errors
+- Verify sitemap is accessible
+- Ensure robots.txt allows crawling
+- Monitor 404 errors in Search Console

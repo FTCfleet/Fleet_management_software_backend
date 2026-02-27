@@ -1,0 +1,16 @@
+# Friends Transport Company - Robots.txt
+User-agent: *
+Allow: /
+Allow: /track
+Allow: /about
+Allow: /services
+Allow: /contact
+Allow: /locations
+Disallow: /api/
+Disallow: /admin/
+Disallow: /login
+
+Sitemap: https://friendstransport.in/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1

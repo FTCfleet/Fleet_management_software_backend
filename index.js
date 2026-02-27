@@ -5,7 +5,8 @@ if (process.env.NODE_ENV !== 'production') {
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
+const path = require('path');
 
 const dbUrl = process.env.DB_URL;
 const PORT = process.env.PORT || 8000;
@@ -51,6 +52,10 @@ const corsOptions = {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
+
+// Serve static files (SEO files, assets)
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/ledger', ledgerRoutes);

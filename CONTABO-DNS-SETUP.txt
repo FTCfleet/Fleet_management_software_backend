@@ -1,0 +1,242 @@
+═══════════════════════════════════════════════════════════════
+  GOOGLE SEARCH CONSOLE VERIFICATION - CONTABO VPS SETUP
+  Domain: friendstransport.in
+═══════════════════════════════════════════════════════════════
+
+🔍 IMPORTANT: WHERE TO ADD DNS RECORDS
+═══════════════════════════════════════════════════════════════
+
+Your website is hosted on Contabo VPS, but DNS records are managed
+at your DOMAIN REGISTRAR (where you bought the domain).
+
+Contabo VPS = Web hosting (where files are stored)
+Domain Registrar = DNS management (where domain points)
+
+
+📍 STEP 1: FIND YOUR DOMAIN REGISTRAR
+═══════════════════════════════════════════════════════════════
+
+Where did you purchase "friendstransport.in"?
+
+Common registrars in India:
+  • GoDaddy India (godaddy.com)
+  • Namecheap (namecheap.com)
+  • BigRock (bigrock.in)
+  • HostGator India (hostgator.in)
+  • ResellerClub (resellerclub.com)
+  • Google Domains (domains.google)
+  • Cloudflare (cloudflare.com)
+
+To find out, check:
+1. Your email for domain purchase receipt
+2. Run: whois friendstransport.in
+3. Check your billing records
+
+
+🔧 OPTION A: DNS MANAGED AT DOMAIN REGISTRAR (Most Common)
+═══════════════════════════════════════════════════════════════
+
+If your domain's nameservers point to your registrar:
+
+1. Login to your domain registrar (GoDaddy, Namecheap, etc.)
+2. Go to DNS Management for friendstransport.in
+3. Add TXT record:
+   
+   Type:  TXT
+   Host:  @
+   Value: google-site-verification=3MDndysJnZ8ll5PmYDqJ_Z41X4yIIPH_3HjhQ1cb_yc
+   TTL:   3600
+
+4. Save and wait 15-30 minutes
+5. Verify in Google Search Console
+
+
+🔧 OPTION B: DNS MANAGED AT CLOUDFLARE (If Using)
+═══════════════════════════════════════════════════════════════
+
+If you're using Cloudflare for DNS:
+
+1. Login to Cloudflare dashboard
+2. Select friendstransport.in
+3. Go to DNS tab
+4. Click "Add record"
+5. Fill in:
+   
+   Type:    TXT
+   Name:    @
+   Content: google-site-verification=3MDndysJnZ8ll5PmYDqJ_Z41X4yIIPH_3HjhQ1cb_yc
+   TTL:     Auto
+   Proxy:   DNS only (gray cloud)
+
+6. Click "Save"
+7. Wait 5-15 minutes
+8. Verify in Google Search Console
+
+
+🔧 OPTION C: DNS MANAGED ON CONTABO VPS (Advanced)
+═══════════════════════════════════════════════════════════════
+
+If you're running your own DNS server on Contabo (rare):
+
+1. SSH into your Contabo VPS:
+   ssh root@your-vps-ip
+
+2. Check which DNS server you're using:
+   
+   # For BIND
+   sudo nano /etc/bind/db.friendstransport.in
+   
+   # For PowerDNS
+   sudo pdnsutil list-zone friendstransport.in
+
+3. Add TXT record to zone file:
+   
+   @    IN    TXT    "google-site-verification=3MDndysJnZ8ll5PmYDqJ_Z41X4yIIPH_3HjhQ1cb_yc"
+
+4. Reload DNS:
+   
+   # For BIND
+   sudo systemctl reload bind9
+   
+   # For PowerDNS
+   sudo systemctl reload pdns
+
+5. Verify record:
+   dig @localhost friendstransport.in TXT
+
+
+═══════════════════════════════════════════════════════════════
+  QUICK CHECK: WHERE IS YOUR DNS MANAGED?
+═══════════════════════════════════════════════════════════════
+
+Run this command to check your nameservers:
+
+  dig friendstransport.in NS
+
+Or:
+
+  nslookup -type=NS friendstransport.in
+
+Look at the result:
+
+• If you see: ns1.godaddy.com → DNS at GoDaddy
+• If you see: dns1.registrar-servers.com → DNS at Namecheap
+• If you see: ns.cloudflare.com → DNS at Cloudflare
+• If you see: ns1.contabo.net → DNS at Contabo
+• If you see: your-vps-ip → DNS on your VPS
+
+
+═══════════════════════════════════════════════════════════════
+  RECOMMENDED APPROACH (EASIEST)
+═══════════════════════════════════════════════════════════════
+
+1. Find where you bought friendstransport.in
+2. Login to that website
+3. Find "DNS Management" or "DNS Settings"
+4. Add the TXT record there
+5. Done!
+
+This is the simplest and most common setup.
+
+
+═══════════════════════════════════════════════════════════════
+  ALTERNATIVE: VERIFY VIA HTML FILE (NO DNS NEEDED)
+═══════════════════════════════════════════════════════════════
+
+If you can't access DNS, verify via HTML file upload instead:
+
+1. In Google Search Console, choose "HTML file" method
+2. Download the verification file (e.g., google1234.html)
+3. Upload to your Contabo VPS:
+   
+   # SSH into VPS
+   ssh root@your-vps-ip
+   
+   # Navigate to web root
+   cd /var/www/html  # or your website directory
+   
+   # Create verification file
+   nano google1234.html
+   # Paste the content Google gave you
+   # Save and exit (Ctrl+X, Y, Enter)
+   
+   # Set permissions
+   chmod 644 google1234.html
+
+4. Verify the file is accessible:
+   curl https://friendstransport.in/google1234.html
+
+5. Click "Verify" in Google Search Console
+
+
+═══════════════════════════════════════════════════════════════
+  ALTERNATIVE: VERIFY VIA HTML META TAG (NO DNS NEEDED)
+═══════════════════════════════════════════════════════════════
+
+Add meta tag to your website's homepage:
+
+1. In Google Search Console, choose "HTML tag" method
+2. Copy the meta tag (e.g., <meta name="google-site-verification" content="...">)
+3. SSH into your Contabo VPS
+4. Edit your index.html or main HTML file:
+   
+   cd /var/www/html  # or your website directory
+   nano index.html
+   
+5. Add the meta tag inside <head> section:
+   
+   <head>
+     <meta name="google-site-verification" content="3MDndysJnZ8ll5PmYDqJ_Z41X4yIIPH_3HjhQ1cb_yc" />
+     <!-- other head content -->
+   </head>
+
+6. Save and exit
+7. Verify it's visible:
+   curl https://friendstransport.in | grep google-site-verification
+
+8. Click "Verify" in Google Search Console
+
+
+═══════════════════════════════════════════════════════════════
+  WHAT I NEED TO HELP YOU FURTHER
+═══════════════════════════════════════════════════════════════
+
+Please provide:
+
+1. Where did you buy friendstransport.in domain?
+   (GoDaddy, Namecheap, BigRock, etc.)
+
+2. Are you using Cloudflare?
+   (Yes/No)
+
+3. What's your website directory on Contabo?
+   (e.g., /var/www/html, /home/user/website)
+
+4. What web server are you using?
+   (Nginx, Apache, Node.js)
+
+With this info, I can give you exact commands to run!
+
+
+═══════════════════════════════════════════════════════════════
+  RECOMMENDED: USE HTML FILE METHOD (FASTEST)
+═══════════════════════════════════════════════════════════════
+
+Since you have VPS access, the HTML file method is fastest:
+
+1. Go to Google Search Console
+2. Click "Verify" button
+3. Choose "HTML file" method instead of DNS
+4. Download the file
+5. Upload to your VPS website root
+6. Click verify
+7. Done in 2 minutes!
+
+No DNS changes needed, no waiting for propagation!
+
+
+═══════════════════════════════════════════════════════════════
+Generated: February 2026
+VPS Provider: Contabo
+Domain: friendstransport.in
+═══════════════════════════════════════════════════════════════
