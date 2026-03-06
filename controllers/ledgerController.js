@@ -107,12 +107,7 @@ module.exports.createLedger = async (req, res) => {
             if (parcel) parcels.push(parcel._id);
         }
 
-        let src= null;
-        if(data.sourceWarehouse){
-            src= await Warehouse.findOne({ warehouseID: data.sourceWarehouse });
-        }else{
-            src= req.user.warehouseCode;
-        }
+        let src= req.user.warehouseCode;
 
         let dest= await Warehouse.findOne({ warehouseID: data.destinationWarehouse });
 
@@ -152,7 +147,7 @@ module.exports.createLedger = async (req, res) => {
             scannedByDest: null,
             verifiedBySource: req.user._id,
             lorryFreight: toDbValue(data.lorryFreight || 0),   
-            sourceWarehouse: data.sourceWarehouse ? src._id : src,
+            sourceWarehouse: src._id,
             destinationWarehouse: dest._id
         });
 
