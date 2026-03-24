@@ -1,3 +1,6 @@
+const fs = require('fs');
+const crypto = require('crypto');
+
 const net = require('net');
 const Bonjour = require('bonjour-service');
 
@@ -284,4 +287,27 @@ module.exports.printToNetworkPrinter = async (req, res) => {
 
     // Set socket timeout (10 seconds)
     client.setTimeout(10000);
+};
+
+module.exports.getQZSignature = async (req, res) => {
+    try {
+        const data = req.body.request;
+        // const privateKey = fs.readFileSync('./private-key.pem', 'utf8');
+        const privateKey = process.env.QZ_PRIVATE_KEY
+            .replace(/\\n/g, '\n')
+            .trim();
+
+        const signer = crypto.createSign('RSA-SHA1');
+        signer.update(data, 'utf8');
+        signer.end();
+
+        const signature = signer.sign(privateKey, 'base64');
+        console.log(signature);
+        res.set('Content-Type', 'text/plain');
+        res.send(signature);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Signature failed');
+    }
 };

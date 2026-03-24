@@ -28,6 +28,7 @@ const serviceEnquiryRoutes = require("./routes/serviceEnquiryRoutes.js");
 const analyticsRoutes = require("./routes/analyticsRoutes.js");
 const paymentTrackingRoutes = require("./routes/paymentTrackingRoutes.js");
 // const backupRoutes = require("./routes/backupRoutes.js");
+const { getQZSignature } = require('./controllers/networkPrintController.js');
 
 mongoose.connect(dbUrl);
 const db = mongoose.connection;
@@ -66,6 +67,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/service-enquiry', serviceEnquiryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/payment-tracking', paymentTrackingRoutes);
+
+// QZ Tray signature endpoint
+app.post('/api/qz-sign', getQZSignature);
+
 // app.use('/api/backup', backupRoutes);
 
 /*
