@@ -698,84 +698,92 @@ module.exports.editLedger = async (req, res) => {
 
 module.exports.verifyLedger = async(req, res) => {
     try {
-        const { id } = req.params;
-        let parcelsList = new Set(req.body.parcels);
-        let ledger=await Ledger.findOne({ledgerId:id});
-
-        if (!ledger) {
-            return res.status(404).json({ message: `Can't find any Ledger with ID ${id}`,flag:false });
-        }
-
-        let actualParcels=ledger.parcels;
-        for(let id of actualParcels){
-            if (!parcelsList.has(id.toString())) {
-                continue;
-            }
-            const parcel= await Parcel.findById(id);
-            if (!parcel) {
-                continue;
-            }
-            parcel.status='delivered';
-            await parcel.save();
-        }
-        ledger.status='completed';
-        ledger.deliveredAt = getNow();
-        ledger.verifiedByDest=req.user._id;
-
-        await ledger.save();
-
-        let retValueSender, retValueReceiver;
-
-        for(let id of ledger.parcels){
-            const parcel= await Parcel.findById(id).populate('sender receiver');
-            retValueSender= sendDeliveryMessage(parcel.sender.phoneNo, parcel.sender.name, parcel.trackingId);
-            retValueReceiver= sendDeliveryMessage(parcel.receiver.phoneNo, parcel.receiver.name, parcel.trackingId);
-        }
-
-        if(retValueSender && retValueReceiver){
-            return res.status(200).json({ message: "Successful", body: ledger ,flag:true});
-        }else{
-            return res.status(400).send({message: "Failed to send delivery message", flag: false});
-        }
+        const ledgerId = req.params.id;
+        const requestedParcelIds = req.body.parcels;
         
-    } catch (err) {
-        return res.status(500).json({ message: "Failed to get ledgers by date", error: err.message,flag:false });
-    }
-}
-
-module.exports.deliverLedger = async(req, res) => {
-    try {
-        const { codes, vehicleNo } = req.body;
-
-        let ledger= null;
-        for(let parcel of codes){
-            const p=await Parcel.findOne({trackingId: parcel});
-            if(!p){
-                return res.status(400).json({message: "Parcel not found"});
-            }
-
-
-            if(!ledger) ledger= await Ledger.findById(p.ledgerId);
-
-            if(ledger && ledger.vehicleNo!=vehicleNo){
-                for(let pcl of codes){
-                    const temp=await Parcel.findOne({trackingId: pcl});
-                    temp.status= 'dispatched';
-                    temp.save();
-                }
-
-                return res.status(400).json({message: "Selected vehicle no. does not matches this ledger's vehicle no.",flag:false});
-            }
-
-            p.status='delivered';
-            await p.save();
+        let parcelsList = new Set(requestedParcelIds);
+        
+        const ledger = await Ledger.findById(ledgerId);
+        if (!ledger) {
+            return res.status(404).json({ error: 'Ledger not found' });
         }
-        ledger.status= 'verified';
-        ledger.scannedByDest=req.user._id;
+
+        const validTrackingIds = ledger.parcels
+            .filter(p => parcelsList.has(p?.toString()))
+
+        const parcelsToUpdate = await Parcel.find({
+            _id: { $in: validTrackingIds } 
+        }).populate('sender receiver');
+
+        await Parcel.updateMany(
+            {_id: { $in: validTrackingIds }},
+            { $set: { status: 'delivered' } }
+        );
+
+        ledger.status = 'completed';
         await ledger.save();
 
-        return res.status(200).json({ message: "Successful", flag : true });
-    } catch (err) {
-        return res.status(500).json({ message: "Failed to get ledgers by date", error: err.message,flag:false });
+        // 6. Asynchronous SMS Trigger (Fire and Forget)
+        parcelsToUpdate.forEach(parcel => {
+            const { trackingId, sender, receiver } = parcel;
+
+            if (sender && sender.phoneNo && sender.name) {
+                sendDeliveryMessage(sender.phoneNo, sender.name, trackingId)
+                    .catch(err => console.error(`SMS Error (Sender - ${trackingId}):`, err));
+            }
+
+            if (receiver && receiver.phoneNo && receiver.name) {
+                sendDeliveryMessage(receiver.phoneNo, receiver.name, trackingId)
+                    .catch(err => console.error(`SMS Error (Receiver - ${trackingId}):`, err));
+            }
+        });
+
+        // 7. Send Immediate Client Response
+        return res.status(200).json({ 
+            message: "Successful",
+            body: { count: validTrackingIds.length },
+            flag:true
+        });
+
+    } catch (error) {
+        console.error('Error in /ledger/:id/deliver:', error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
-}
+};
+
+// module.exports.deliverLedger = async(req, res) => {
+//     try {
+//         const { codes, vehicleNo } = req.body;
+
+//         let ledger= null;
+//         for(let parcel of codes){
+//             const p=await Parcel.findOne({trackingId: parcel});
+//             if(!p){
+//                 return res.status(400).json({message: "Parcel not found"});
+//             }
+
+
+//             if(!ledger) ledger= await Ledger.findById(p.ledgerId);
+
+//             if(ledger && ledger.vehicleNo!=vehicleNo){
+//                 for(let pcl of codes){
+//                     const temp=await Parcel.findOne({trackingId: pcl});
+//                     temp.status= 'dispatched';
+//                     temp.save();
+//                 }
+
+//                 return res.status(400).json({message: "Selected vehicle no. does not matches this ledger's vehicle no.",flag:false});
+//             }
+
+//             p.status='delivered';
+//             await p.save();
+//         }
+//         ledger.status= 'verified';
+//         ledger.scannedByDest=req.user._id;
+//         await ledger.save();
+
+//         return res.status(200).json({ message: "Successful", flag : true });
+//     } catch (err) {
+//         return res.status(500).json({ message: "Failed to get ledgers by date", error: err.message,flag:false });
+//     }
+// }

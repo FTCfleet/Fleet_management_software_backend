@@ -22,8 +22,8 @@ router.route('/track-all/:date')
 router.route('/edit/:id')
     .put(authenticateToken, isSupervisor, catchAsync(ledgerController.editLedger));
 
-router.route('/scan-deliver')
-    .post(authenticateToken, isAppUser, catchAsync(ledgerController.deliverLedger));
+// router.route('/scan-deliver')
+//     .post(authenticateToken, isAppUser, catchAsync(ledgerController.deliverLedger));
 
 router.route('/verify-deliver/:id')
     .put(authenticateToken, isSupervisor, catchAsync(ledgerController.verifyLedger));

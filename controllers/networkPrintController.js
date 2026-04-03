@@ -302,7 +302,7 @@ module.exports.getQZSignature = async (req, res) => {
         signer.end();
 
         const signature = signer.sign(privateKey, 'base64');
-        console.log(signature);
+        // console.log(signature);
         res.set('Content-Type', 'text/plain');
         res.send(signature);
 
