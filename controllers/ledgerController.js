@@ -703,13 +703,13 @@ module.exports.verifyLedger = async(req, res) => {
         
         let parcelsList = new Set(requestedParcelIds);
         
-        const ledger = await Ledger.findById(ledgerId);
+        const ledger = await Ledger.findOne({ledgerId: ledgerId});
         if (!ledger) {
             return res.status(404).json({ error: 'Ledger not found' });
         }
 
         const validTrackingIds = ledger.parcels
-            .filter(p => parcelsList.has(p?.toString()))
+            .filter(p => parcelsList.has(p?.toString()));
 
         const parcelsToUpdate = await Parcel.find({
             _id: { $in: validTrackingIds } 
