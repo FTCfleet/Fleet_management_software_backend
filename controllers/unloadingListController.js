@@ -27,7 +27,7 @@ module.exports.createUnloadingList = async (req, res) => {
         if (!vehicleNo) {
             return res.status(404).json({ message: "Vehicle number is required", flag: false });
         }
-        if (!parcels || (typeof val === 'object' && val.constructor === Object) || Object.keys(parcels).length > 0) {
+        if (!parcels || !Array.isArray(parcels) || parcels.length === 0) {
             return res.status(404).json({ message: "Parcels list is required and cannot be empty", flag: false });
         }
 
