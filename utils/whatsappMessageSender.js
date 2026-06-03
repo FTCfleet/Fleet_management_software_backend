@@ -55,7 +55,7 @@ function formatPhoneNumber(phoneNo) {
 }
 
 // NEW: Send order booked notification to receiver
-async function sendOrderBookedMessage(phoneNo, lrNumber) {
+async function sendDeliveryMessage(phoneNo,trackingId, destination, mapUrl) {
     try {
         // Format phone number (extract last 10 digits)
         const formattedPhone = formatPhoneNumber(phoneNo);
@@ -64,52 +64,23 @@ async function sendOrderBookedMessage(phoneNo, lrNumber) {
             console.log(`Invalid phone number: ${phoneNo}`);
             return 0;
         }
+        
+        const websiteUrl = "https://friendstransport.in/track";
+        const options = {
+            method: 'POST',
+            url: process.env.WHATSAPP_URL,
+            headers: {
+                accept: 'application/json',
+                authkey: process.env.WHATSAPP_TOKEN,
+                'content-type': 'application/json'
+            },
+            data: `{\n    "integrated_number": "${process.env.WHATSAPP_NUMBER}",\n    "content_type": "template",\n    "payload": {\n        "messaging_product": "whatsapp",\n        "type": "template",\n        "template": {\n            "name": "order_delivered",\n            "language": {\n                "code": "en_US",\n                "policy": "deterministic"\n            },\n            "namespace": "d3550953_8229_42fd_b2d2_4d3ae4991ae9",\n            "to_and_components": [\n                {\n                    "to": [\n                        "+91${formattedPhone}"\n                    ],\n                    "components": {\n                        "body_map_url": {\n                            "type": "text",\n                            "value": "${mapUrl}",\n                            "parameter_name": "map_url"\n                        },\n                        "body_destination": {\n                            "type": "text",\n                            "value": "${destination}",\n                            "parameter_name": "destination"\n                        },\n                        "body_website_url": {\n                            "type": "text",\n                            "value": "${websiteUrl}",\n                            "parameter_name": "website_url"\n                        },\n                        "body_tracking_id": {\n                            "type": "text",\n                            "value": "${trackingId}",\n                            "parameter_name": "tracking_id"\n                        }\n                    }\n                }\n            ]\n        }\n    }\n}`
+        };
 
         console.log(`Sending order booked notification to: +91 ${formattedPhone}, LR: ${lrNumber}`);
 
-        const response = await axios({
-            url: process.env.WHATSAPP_URL,
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
-            },
-            data: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: `+91${formattedPhone}`,
-                type: 'template',
-                template: {
-                    name: 'order_booked',
-                    language: {
-                        code: 'en'
-                    },
-                    components: [
-                        {
-                            type: 'body',
-                            parameters: [
-                                {
-                                    type: 'text',
-                                    text: lrNumber,
-                                }
-                            ]
-                        },
-                        {
-                            type: 'button',
-                            sub_type: 'copy_code',
-                            index: '0',
-                            parameters: [
-                                {
-                                    type: 'coupon_code',
-                                    coupon_code: lrNumber
-                                }
-                            ]
-                        }
-                    ]
-                }
-            })
-        });
+        const { data } = await axios.request(options);
 
-        console.log(`✓ WhatsApp notification sent to receiver: ${formattedPhone}`);
         return 1;
     } catch (err) {
         console.error('Failed to send order booked message:', err.response?.data || err.message);
@@ -117,7 +88,7 @@ async function sendOrderBookedMessage(phoneNo, lrNumber) {
     }
 }
 
-async function sendDeliveryMessage(phoneNo, name, trackingId){
+async function sendOrderBookedMessage(phoneNo, trackingId, destination) {
     try{
         // Format phone number
         const formattedPhone = formatPhoneNumber(phoneNo);
@@ -127,43 +98,21 @@ async function sendDeliveryMessage(phoneNo, name, trackingId){
             return 0;
         }
 
-        const respose= await axios({
+
+        const options = {
+            method: 'POST',
             url: process.env.WHATSAPP_URL,
-            method: 'post',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
+                accept: 'application/json',
+                authkey: process.env.WHATSAPP_TOKEN,
+                'content-type': 'application/json'
             },
-            data: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: `+91${formattedPhone}`,
-                type: 'template',
-                template: {
-                    name: 'parcel_dispatched',
-                    language: {
-                        code: 'en'
-                    },
-                    components:[
-                        {
-                            type: 'body',
-                            parameters:[
-                                {
-                                    type: 'text',
-                                    text: name,
-                                },
-                                {
-                                    type: 'text',
-                                    text: trackingId,
-                                }
-                            ]
-                        }
-                    ]
-                }
-            })
-        });
+            data: `{\n    "integrated_number": "${process.env.WHATSAPP_NUMBER}",\n    "content_type": "template",\n    "payload": {\n        "messaging_product": "whatsapp",\n        "type": "template",\n        "template": {\n            "name": "order_received",\n            "language": {\n                "code": "en_US",\n                "policy": "deterministic"\n            },\n            "namespace": "d3550953_8229_42fd_b2d2_4d3ae4991ae9",\n            "to_and_components": [\n                {\n                    "to": [\n                        "${formattedPhone}"\n                    ],\n                    "components": {\n                        "body_tracking_id": {\n                            "type": "text",\n                            "value": "${trackingId}",\n                            "parameter_name": "tracking_id"\n                        },\n                        "body_website_url": {\n                            "type": "text",\n                            "value": "${websiteUrl}>",\n                            "parameter_name": "website_url"\n                        },\n                        "body_destination": {\n                            "type": "text",\n                            "value": "${destination}>",\n                            "parameter_name": "destination"\n                        }\n                    }\n                }\n            ]\n        }\n    }\n}`
+        };
+
+        const { data } = await axios.request(options);
+        console.log(data);
         return 1;
-        // console.log(respose.data); 
-        // console.log({name, phoneNo, trackingId});
     }catch(err){
         console.log("Failed to send delivery message:", err.response?.data || err.message);
         return 0;
