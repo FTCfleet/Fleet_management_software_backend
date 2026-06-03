@@ -724,19 +724,19 @@ module.exports.verifyLedger = async(req, res) => {
         await ledger.save();
 
         // 6. Asynchronous SMS Trigger (Fire and Forget)
-        parcelsToUpdate.forEach(parcel => {
-            const { trackingId, sender, receiver } = parcel;
+        // parcelsToUpdate.forEach(parcel => {
+        //     const { trackingId, sender, receiver } = parcel;
 
-            if (sender && sender.phoneNo && sender.name) {
-                sendDeliveryMessage(sender.phoneNo, sender.name, trackingId)
-                    .catch(err => console.error(`SMS Error (Sender - ${trackingId}):`, err));
-            }
+        //     if (sender && sender.phoneNo && sender.name) {
+        //         sendDeliveryMessage(sender.phoneNo, sender.name, trackingId)
+        //             .catch(err => console.error(`SMS Error (Sender - ${trackingId}):`, err));
+        //     }
 
-            if (receiver && receiver.phoneNo && receiver.name) {
-                sendDeliveryMessage(receiver.phoneNo, receiver.name, trackingId)
-                    .catch(err => console.error(`SMS Error (Receiver - ${trackingId}):`, err));
-            }
-        });
+        //     if (receiver && receiver.phoneNo && receiver.name) {
+        //         sendDeliveryMessage(receiver.phoneNo, receiver.name, trackingId)
+        //             .catch(err => console.error(`SMS Error (Receiver - ${trackingId}):`, err));
+        //     }
+        // });
 
         // 7. Send Immediate Client Response
         return res.status(200).json({ 
