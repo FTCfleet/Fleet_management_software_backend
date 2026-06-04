@@ -65,7 +65,7 @@ module.exports.createLoadingList = async (req, res) => {
             if (!parcelDoc) {
                 continue; // discard non-existent parcel
             }
-            console.log(parcelDoc);
+            // console.log(parcelDoc);
             const totalItemCount = parcelDoc.items.reduce((acc, item) => acc + item.quantity, 0);
 
             let finalCount = count;
@@ -197,7 +197,7 @@ module.exports.getLoadingListsByDate = async (req, res) => {
         const loadingLists = await LoadingList.find(query)
             .populate(loadingListPopulateConfig)
             .sort({createdAt: -1});
-            
+
         return res.status(200).json({
             message: "Successfully fetched loading lists",
             body: loadingLists,

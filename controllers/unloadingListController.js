@@ -60,26 +60,26 @@ module.exports.createUnloadingList = async (req, res) => {
         // --- Process parcels: validate, compute count ---
         // Validate each parcel ID exists in DB
         const validParcels = [];
-        for (const [trackingId, rawCount] of parcels) {
-            const parcelDoc = await Parcel.findOne({ trackingId }).select('items').populate('items');
+        for (const { parcel, count } of parcels) {
+            const parcelDoc = await Parcel.findOne({ trackingId: parcel }).select('items').populate('items');
             if (!parcelDoc) {
                 continue; // discard non-existent parcel
             }
 
             const totalItemCount = parcelDoc.items.reduce((acc, item) => acc + item.quantity, 0);
 
-            let count = rawCount;
+            let finalCount = count;
             // If count is -1, set it to total item count
-            if (count === -1) {
-                count = totalItemCount;
+            if (finalCount === -1) {
+                finalCount = totalItemCount;
             }
 
             // Count is always minimum of given and total item count
-            count = Math.min(count, totalItemCount);
+            finalCount = Math.min(finalCount, totalItemCount);
 
             validParcels.push({
                 parcel: parcelDoc._id,
-                count
+                count: finalCount
             });
         }
 
@@ -181,7 +181,7 @@ module.exports.getUnloadingListsByDate = async (req, res) => {
         };
 
         // Optional: filter by sourceWarehouse
-        const { sourceWarehouse, destinationWarehouse } = req.query;
+        const { sourceWarehouse } = req.query;
 
         if (sourceWarehouse) {
             const srcWh = await Warehouse.findOne({ warehouseID: sourceWarehouse });
@@ -191,17 +191,20 @@ module.exports.getUnloadingListsByDate = async (req, res) => {
             query.sourceWarehouse = srcWh._id;
         }
 
-        // Optional: filter by destinationWarehouse
-        if (destinationWarehouse) {
-            const destWh = await Warehouse.findOne({ warehouseID: destinationWarehouse });
-            if (!destWh) {
-                return res.status(404).json({ message: "Destination warehouse not found", flag: false });
-            }
-            query.destinationWarehouse = destWh._id;
+        if (req.user.role !== 'admin'){
+            query.destinationWarehouse = req.user.warehouseCode;
         }
+        // // Optional: filter by destinationWarehouse
+        // if (destinationWarehouse) {
+        //     const destWh = await Warehouse.findOne({ warehouseID: destinationWarehouse });
+        //     if (!destWh) {
+        //         return res.status(404).json({ message: "Destination warehouse not found", flag: false });
+        //     }
+        // }
 
         const unloadingLists = await UnloadingList.find(query)
             .populate(unloadingListPopulateConfig)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: "Successfully fetched unloading lists",
