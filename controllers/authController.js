@@ -58,12 +58,12 @@ module.exports.login= async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' ,flag:false});
         }
 
-        if(forApp && (forApp==="true") && (employee.role==='supervisor')){
-            return res.status(403).json({message: "Only admin and staff can access app", flag: false});
+        if(forApp && (forApp==="true") && (employee.role!=='staff')){
+            return res.status(403).json({message: "Only Staff can access app", flag: false});
         }
 
         if(employee.role==='staff' && forApp===null){
-            return res.status(403).json({message: "Only admin and supervisor can access website", flag: false});
+            return res.status(403).json({message: "Only Admin and Supervisor can access website", flag: false});
         }
 
         const token = jsonwebtoken.sign({ 

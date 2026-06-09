@@ -1,4 +1,5 @@
 const Ledger = require("../models/ledgerSchema.js");
+const LoadingList = require("../models/loadingListSchema.js");
 const Item = require("../models/itemSchema.js");
 const generateLedger = require("../utils/ledgerPdfFormat.js");
 const {getNow} = require("../utils/dateFormatter.js");
@@ -155,6 +156,82 @@ module.exports.createLedger = async (req, res) => {
 
         
         for (const id of parcels) {
+            let parcel = await Parcel.findById(id);
+            if (parcel) {
+                parcel.ledgerId = newLedger._id;
+                parcel.status = 'dispatched';
+                await parcel.save();
+            }
+        }
+
+        await newLedger.save();
+        
+        return res.status(200).json({message: "Ledger created successfully", body: newLedger.ledgerId, flag:true});
+        
+    }catch (err) {
+        console.error('Error creating ledger:', err);
+        return res.status(500).json({ message: "Failed to create new ledger", error: err.message, flag: false });
+    }
+}
+
+module.exports.createLedgerByLL = async (req, res) => {
+    try {
+        const data = req.body; //ids(parcel), truck, srcWH, destWH, lorryFreight, verifiedBySource, status
+        
+        let src = req.user.warehouseCode;
+        let ll = await LoadingList.findOne({ _id: data.loadingListId }).populate('parcels destinationWarehouse');
+        if (!ll){
+            return res.status(404).json({ message: `Loading List not found with ID ${data.loadingListId}`, flag: false });
+        }
+        
+        if (ll.sourceWarehouse !== src._id && req.user.role !== 'admin') {
+            return res.status(401).json({ message: `Loading List source warehouse does not match user's warehouse`, flag: false });
+        }
+
+        let startName = ll.destinationWarehouse.warehouseID.split('-')[0].slice(0,3);
+        const nextSerial = await getNextTrackingNumber(ll.destinationWarehouse._id);
+        const ledgerId = startName+'-'+ nextSerial;
+
+        // removeOlderSequenceMemo(ledgerId);
+        const existingDriver = await Driver.findOne({
+            $expr: {
+                $eq: [
+                { $replaceAll: { input: "$vehicleNo", find: " ", replacement: "" } },
+                ll.vehicleNo.replaceAll(' ', '')
+                ]
+            }
+        });
+        if (!existingDriver) {
+            if (ll.driverName && ll.driverName.trim() && ll.driverPhone && ll.driverPhone.trim()) {
+                const driver = new Driver({
+                    vehicleNo: ll.vehicleNo,
+                    name: ll.driverName.trim(),
+                    phoneNo: ll.driverPhone.trim()
+                });
+                await driver.save();
+            }
+        }
+        
+        const newLedger = new Ledger({
+            ledgerId,
+            vehicleNo: ll.vehicleNo,
+            driverName: ll.driverName || 'N/A',
+            driverPhone: ll.driverPhone || 'N/A',
+            status: 'dispatched',
+            dispatchedAt: getNow(),
+            parcels: ll.parcels.map(p => p.parcel),
+            scannedBySource: null,
+            scannedByDest: null,
+            verifiedBySource: req.user._id,
+            lorryFreight: toDbValue(data.lorryFreight || 0),   
+            sourceWarehouse: ll.sourceWarehouse,
+            destinationWarehouse: ll.destinationWarehouse._id
+        });
+
+        // console.log('Creating new ledger:', newLedger);
+
+        
+        for (const id of ll.parcels.map(p => p.parcel)) {
             let parcel = await Parcel.findById(id);
             if (parcel) {
                 parcel.ledgerId = newLedger._id;
