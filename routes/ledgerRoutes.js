@@ -7,6 +7,9 @@ const { authenticateToken, isAppUser, isSupervisor } = require('../middleware/au
 router.route('/new')
     .post(authenticateToken, catchAsync(ledgerController.createLedger));
 
+router.route('/new-ll')
+    .post(authenticateToken, catchAsync(ledgerController.createLedgerByLL));
+
 router.route('/generate-ledger-receipt/:id')
     .get(catchAsync(ledgerController.generatePDF))
 
