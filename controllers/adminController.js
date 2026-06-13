@@ -55,15 +55,44 @@ module.exports.fetchAllEmployees = async (req, res) => {
 //
 module.exports.fetchAllDrivers = async (req, res) => {
     try {
-        const allDrivers = await Driver.find();
+        const { page = 1, name } = req.query || {};
+        const PAGE_SIZE = 100;
+        const parsedPage = parseInt(page, 10);
+        const pageNumber = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
-        if (allDrivers.length === 0) {
-            return res.status(201).json({ message: "No Drivers", body: {}, flag:false });
+        const filters = {};
+        if (typeof name === 'string' && name.trim()) {
+            const escaped = escapeRegex(name.trim());
+            filters.$or = [
+                { name: { $regex: `^${escaped}`, $options: 'i' } },
+                { phoneNo: { $regex: `^${escaped}`, $options: 'i' } },
+                { vehicleNo: { $regex: `^${escaped}`, $options: 'i' } }
+            ];
         }
 
-        return res.status(200).send({ message: "Successfully fetched all Drivers", body: allDrivers, flag:true });
+        const skip = (pageNumber - 1) * PAGE_SIZE;
+
+        const [drivers, totalDrivers] = await Promise.all([
+            Driver.find(filters)
+                .sort({ name: 1 })
+                .skip(skip)
+                .limit(PAGE_SIZE),
+            Driver.countDocuments(filters)
+        ]);
+
+        return res.status(200).json({
+            message: "Successfully fetched all drivers",
+            body: {
+                drivers,
+                page: pageNumber,
+                pageSize: PAGE_SIZE,
+                totalPages: totalDrivers === 0 ? 0 : Math.ceil(totalDrivers / PAGE_SIZE),
+                totalDrivers
+            },
+            flag: true
+        });
     } catch (err) {
-        return res.status(500).json({ message: "Failed to fetch all Drivers", error: err.message ,flag:false});
+        return res.status(500).json({ message: "Failed to fetch all Drivers", error: err.message, flag: false });
     }
 }
 

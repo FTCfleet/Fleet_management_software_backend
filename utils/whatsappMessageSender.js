@@ -1,6 +1,15 @@
 const axios = require("axios");
 const crypto = require('node:crypto');
 
+const deliveryOffices = {
+    "KNR": { name: "Karimnagar (KNR)", phone: "+919908690827", mapUrl: "https://maps.app.goo.gl/hvLQ4sweDfUqjVTG9?g_st=iw" },
+    "SBD": { name: "Sultanabad (SBD)", phone: "+919849701721", mapUrl: "https://maps.app.goo.gl/WrqfuAtsLyZU5q8u5?g_st=iw" },
+    "PDPL": { name: "Peddapally (PDPL)", phone: "+919030478492", mapUrl: "https://www.google.com/maps?q=18.61289405822754,79.37779235839844&z=17&hl=en" },
+    "NTPC": { name: "Ramagundam NTPC (NTPC)", phone: "+919866239010", mapUrl: "https://maps.app.goo.gl/9xqQvY6h1ch97uW99?g_st=iw" },
+    "GDK": { name: "Godavarikhani (GDK)", phone: "+919949121267", mapUrl: "https://maps.google.com/maps?q=18.742761611938477%2C79.50328063964844&z=17&hl=en" },
+    "MNCL": { name: "Mancherial (MNCL)", phone: "+918977185376", mapUrl: "https://www.google.com/maps?q=18.872785568237305,79.44837951660156&z=17&hl=en" },
+};
+
 // Load environment variables if not already loaded
 if (!process.env.WHATSAPP_URL || !process.env.WHATSAPP_TOKEN) {
     require('dotenv').config();
@@ -53,6 +62,11 @@ function formatPhoneNumber(phoneNo) {
     // Return formatted number
     return last10Digits;
 }
+
+function idFormatter(trackingIds) {
+    let st = 1;
+    return trackingIds.map(id => `${st++}. ${id}`).join("\n");
+};
 
 // NEW: Send order booked notification to receiver
 async function sendOrderBookedMessage(phoneNo, lrNumber) {
@@ -234,7 +248,7 @@ async function sendOTPMessage(phoneNo){
 }
 
 module.exports = {
-    sendDeliveryMessage,
+    sendOrderDispatchedMessage,
     sendOTPMessage,
     sendOrderBookedMessage,
     verifyOTP

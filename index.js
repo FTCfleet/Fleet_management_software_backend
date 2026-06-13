@@ -32,7 +32,7 @@ const analyticsRoutes = require("./routes/analyticsRoutes.js");
 const paymentTrackingRoutes = require("./routes/paymentTrackingRoutes.js");
 // const backupRoutes = require("./routes/backupRoutes.js");
 const { getQZSignature } = require('./controllers/networkPrintController.js');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken } = require('./middleware/auth');
 
 mongoose.connect(dbUrl);
 const db = mongoose.connection;

@@ -287,7 +287,7 @@ async function removeOlderSequenceParcel(trackingId) {
 
 module.exports.newParcel = async (req, res) => {
     try {
-        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, payment, isDoorDelivery, doorDeliveryCharge } = req.body;
+        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, payment, isDoorDelivery, doorDeliveryCharge, whatsAppNo } = req.body;
         if (!sourceWarehouse) {
             // sourceWarehouse = req.user.warehouseCode;
             sourceWarehouse = await Warehouse.findById(req.user.warehouseCode);
@@ -309,6 +309,7 @@ module.exports.newParcel = async (req, res) => {
         const typeCache = new Map();
         let totalFreight = 0;
         let totalHamali = 0;
+        let totalQuantity = 0;
         for (const item of items) {
             const typeName = normalizeItemTypeName(item.type);
             if (!typeName) {
@@ -356,6 +357,7 @@ module.exports.newParcel = async (req, res) => {
             // Only add to totals if values are not null
             totalFreight += (freightDb || 0) * item.quantity;
             totalHamali += (hamaliDb || 0) * item.quantity;
+            totalQuantity += item.quantity;
         }
 
         await Promise.all([
@@ -398,6 +400,15 @@ module.exports.newParcel = async (req, res) => {
                 paymentStatus: 'To Pay'
             });
         }
+
+        sendOrderBookedMessage(
+            whatsAppNo, 
+            trackingId, 
+            destinationWarehouseId.name, 
+            payment, 
+            receiver.name, 
+            totalQuantity
+        );
 
         return res.status(200).json({ message: "Parcel created successfully", body: trackingId, flag: true });
 

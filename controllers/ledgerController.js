@@ -8,7 +8,7 @@ const Employee= require("../models/employeeSchema.js");
 const Warehouse= require("../models/warehouseSchema.js");
 const Driver = require("../models/driverSchema.js");
 const Parcel= require("../models/parcelSchema.js");
-const {sendDeliveryMessage}= require("../utils/whatsappMessageSender.js");
+const {sendOrderDispatchedMessage}= require("../utils/whatsappMessageSender.js");
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
@@ -98,14 +98,39 @@ async function removeOlderSequenceMemo(ledgerId) {
 
 }
 
-
 module.exports.createLedger = async (req, res) => {
     try {
         const data= req.body; //ids(parcel), truck, srcWH, destWH, lorryFreight, verifiedBySource, status
         const parcels = [];
+        const groupedParcels = new Map();
         for (const id of data.ids) {
-            let parcel = await Parcel.findOne({ trackingId: id });
+            let parcel = await Parcel.findOne({ trackingId: id }).populate('receiver sourceWarehouse destinationWarehouse');
             if (parcel) parcels.push(parcel._id);
+            const receiverPhone = parcel.receiver?.phoneNo;
+            const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
+            const destinationWarehouseId =
+            parcel.destinationWarehouse?.warehouseID;
+
+            if (
+                !receiverPhone ||
+                !sourceWarehouseId ||
+                !destinationWarehouseId
+            ) {
+                continue;   
+            }
+
+            const key = `${receiverPhone}::${sourceWarehouseId}::${destinationWarehouseId}`;
+
+            if (!groupedParcels.has(key)) {
+                groupedParcels.set(key, {
+                    receiverPhone,
+                    sourceWarehouseName: parcel.sourceWarehouse?.name,
+                    destinationWarehouseId: parcel.destinationWarehouse?.warehouseID,
+                    trackingIds: [],
+                });
+            }
+
+            groupedParcels.get(key).trackingIds.push(id);
         }
 
         let src= req.user.warehouseCode;
@@ -117,14 +142,7 @@ module.exports.createLedger = async (req, res) => {
         const ledgerId = startName+'-'+ nextSerial;
 
         // removeOlderSequenceMemo(ledgerId);
-        const existingDriver = await Driver.findOne({
-            $expr: {
-                $eq: [
-                { $replaceAll: { input: "$vehicleNo", find: " ", replacement: "" } },
-                data.vehicleNo.replaceAll(' ', '')
-                ]
-            }
-        });
+        const existingDriver = await Driver.findOne({ vehicleNo: data.vehicleNo });
         if (!existingDriver) {
             if (data.driverName && data.driverName.trim() && data.driverPhone && data.driverPhone.trim()) {
                 const driver = new Driver({
@@ -154,13 +172,49 @@ module.exports.createLedger = async (req, res) => {
 
         // console.log('Creating new ledger:', newLedger);
 
-        
-        for (const id of parcels) {
-            let parcel = await Parcel.findById(id);
-            if (parcel) {
-                parcel.ledgerId = newLedger._id;
-                parcel.status = 'dispatched';
-                await parcel.save();
+        Parcel.bulkWrite(
+            parcels.map(parcelId => ({
+                updateOne: {
+                    filter: { _id: parcelId },
+                    update: {
+                        $set: {
+                            ledgerId: newLedger._id,
+                            status: 'dispatched'
+                        }
+                    }
+                }
+            })),
+            {
+                ordered: false
+            }
+        ).catch(err => {
+            console.error('Bulk update errors', err);
+        });
+
+        for (const group of groupedParcels.values()) {
+            const {
+                receiverPhone,
+                sourceWarehouseName,
+                destinationWarehouseId,
+                trackingIds
+                } = group;
+
+            for (let i = 0; i < trackingIds.length; i += 10) {
+                const batch = trackingIds.slice(i, i + 10);
+
+                // Fire and forget
+                sendOrderDispatchedMessage(
+                    receiverPhone,
+                    batch,
+                    sourceWarehouseName,
+                    destinationWarehouseId,
+                    data.vehicleNo
+                ).catch((err) => {
+                    console.error(
+                    `WhatsApp send failed for ${receiverPhone}`,
+                    err
+                    );
+                });
             }
         }
 
@@ -187,6 +241,8 @@ module.exports.createLedgerByLL = async (req, res) => {
         if (ll.sourceWarehouse !== src._id && req.user.role !== 'admin') {
             return res.status(401).json({ message: `Loading List source warehouse does not match user's warehouse`, flag: false });
         }
+
+        ll.validParcels = ll.parcels.map(p => p.parcel);
 
         let startName = ll.destinationWarehouse.warehouseID.split('-')[0].slice(0,3);
         const nextSerial = await getNextTrackingNumber(ll.destinationWarehouse._id);
@@ -219,7 +275,7 @@ module.exports.createLedgerByLL = async (req, res) => {
             driverPhone: ll.driverPhone || 'N/A',
             status: 'dispatched',
             dispatchedAt: getNow(),
-            parcels: ll.parcels.map(p => p.parcel),
+            parcels: ll.validParcels,
             scannedBySource: null,
             scannedByDest: null,
             verifiedBySource: req.user._id,
@@ -229,18 +285,84 @@ module.exports.createLedgerByLL = async (req, res) => {
         });
 
         // console.log('Creating new ledger:', newLedger);
+        await newLedger.save();
 
+        const groupedParcels = new Map();
+        for (const parcelId of ll.validParcels) {
+            let parcel = await Parcel.findOne({ _id: parcelId }).populate('receiver sourceWarehouse destinationWarehouse');
+            const receiverPhone = parcel.receiver?.phoneNo;
+            const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
+            const destinationWarehouseId =
+            parcel.destinationWarehouse?.warehouseID;
+
+            if (
+                !receiverPhone ||
+                !sourceWarehouseId ||
+                !destinationWarehouseId
+            ) {
+                continue;   
+            }
+
+            const key = `${receiverPhone}::${sourceWarehouseId}::${destinationWarehouseId}`;
+
+            if (!groupedParcels.has(key)) {
+                groupedParcels.set(key, {
+                    receiverPhone,
+                    sourceWarehouseName: parcel.sourceWarehouse?.name,
+                    destinationWarehouseId: parcel.destinationWarehouse?.warehouseID,
+                    trackingIds: [],
+                });
+            }
+
+            groupedParcels.get(key).trackingIds.push(id);
+        }
         
-        for (const id of ll.parcels.map(p => p.parcel)) {
-            let parcel = await Parcel.findById(id);
-            if (parcel) {
-                parcel.ledgerId = newLedger._id;
-                parcel.status = 'dispatched';
-                await parcel.save();
+        Parcel.bulkWrite(
+            ll.validParcels.map(parcelId => ({
+                updateOne: {
+                    filter: { _id: parcelId },
+                    update: {
+                        $set: {
+                            ledgerId: newLedger._id,
+                            status: 'dispatched'
+                        }
+                    }
+                }
+            })),
+            {
+                ordered: false
+            }
+        ).catch(err => {
+            console.error('Bulk update errors', err);
+        });
+
+        for (const group of groupedParcels.values()) {
+            const {
+                receiverPhone,
+                sourceWarehouseName,
+                destinationWarehouseId,
+                trackingIds
+            } = group;
+
+            for (let i = 0; i < trackingIds.length; i += 10) {
+                const batch = trackingIds.slice(i, i + 10);
+
+                // Fire and forget
+                sendOrderDispatchedMessage(
+                    receiverPhone,
+                    batch,
+                    sourceWarehouseName,
+                    destinationWarehouseId,
+                    data.vehicleNo
+                ).catch((err) => {
+                    console.error(
+                    `WhatsApp send failed for ${receiverPhone}`,
+                    err
+                    );
+                });
             }
         }
 
-        await newLedger.save();
         
         return res.status(200).json({message: "Ledger created successfully", body: newLedger.ledgerId, flag:true});
         
@@ -805,12 +927,12 @@ module.exports.verifyLedger = async(req, res) => {
         //     const { trackingId, sender, receiver } = parcel;
 
         //     if (sender && sender.phoneNo && sender.name) {
-        //         sendDeliveryMessage(sender.phoneNo, sender.name, trackingId)
+        //         sendOrderDispatchedMessage(sender.phoneNo, sender.name, trackingId)
         //             .catch(err => console.error(`SMS Error (Sender - ${trackingId}):`, err));
         //     }
 
         //     if (receiver && receiver.phoneNo && receiver.name) {
-        //         sendDeliveryMessage(receiver.phoneNo, receiver.name, trackingId)
+        //         sendOrderDispatchedMessage(receiver.phoneNo, receiver.name, trackingId)
         //             .catch(err => console.error(`SMS Error (Receiver - ${trackingId}):`, err));
         //     }
         // });
