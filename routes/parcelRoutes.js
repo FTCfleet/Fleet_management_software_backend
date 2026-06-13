@@ -11,8 +11,8 @@ router.route('/new')
 router.route('/track/:id')
     .get(catchAsync(parcelController.trackParcel));
 
-router.route('/generate-qr/:id')
-    .get(catchAsync(parcelController.generateQRCodes))
+// router.route('/generate-qr/:id')
+//     .get(catchAsync(parcelController.generateQRCodes))
 
 router.route('/all')
     .get(authenticateToken, isSupervisor, catchAsync(parcelController.allParcel));
