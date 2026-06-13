@@ -32,6 +32,7 @@ const analyticsRoutes = require("./routes/analyticsRoutes.js");
 const paymentTrackingRoutes = require("./routes/paymentTrackingRoutes.js");
 // const backupRoutes = require("./routes/backupRoutes.js");
 const { getQZSignature } = require('./controllers/networkPrintController.js');
+const { authenticateToken } = require('../middleware/auth');
 
 mongoose.connect(dbUrl);
 const db = mongoose.connection;
@@ -76,6 +77,21 @@ app.use('/api/payment-tracking', paymentTrackingRoutes);
 // QZ Tray signature endpoint
 app.post('/api/qz-sign', getQZSignature);
 
+app.post('/api/logs', authenticateToken, (req, res) => {
+    try {
+        console.log(JSON.stringify({
+            source: 'client',
+            level: req.body.level,
+            message: req.body.message,
+            data: req.body.data,
+            timestamp: req.body.timestamp
+        }));
+    }
+    catch (error) {
+        console.error('Error processing log:', error);
+    }
+    res.status(200).json({ success: true });
+});
 // app.use('/api/backup', backupRoutes);
 
 /*

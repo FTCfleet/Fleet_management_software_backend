@@ -5,7 +5,7 @@ const RegularClient = require("../models/regularClientSchema.js");
 const RegularItem = require("../models/regularItemSchema.js");
 const Item = require("../models/itemSchema.js");
 const PaymentTracking = require("../models/paymentTrackingSchema.js");
-const generateQRCode = require("../utils/qrCodeGenerator.js");
+// const generateQRCode = require("../utils/qrCodeGenerator.js");
 const { generateLRSheet } = require("../utils/LRreceiptFormat.js");
 const { generateLRSheetThermal } = require("../utils/LRThermal.js");
 const Warehouse = require("../models/warehouseSchema.js");
@@ -13,7 +13,7 @@ const ItemType = require("../models/itemTypeSchema.js");
 const {getNow} = require("../utils/dateFormatter.js");
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
-const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
+// const qrCodeTemplate = require("../utils/qrCodesTemplate.js");
 const fs = require('fs');
 const path = require('path');
 const { toDbValue } = require("../utils/currencyUtils.js");
@@ -413,13 +413,13 @@ module.exports.trackParcel = async (req, res) => {
         if (!parcel) {
             return res.status(201).json({ message: `Can't find any Parcel with Tracking Id. ${id}`, body: {}, flag: false });
         }
-        const { qrCodeURL } = await generateQRCode(id);
+        // const { qrCodeURL } = await generateQRCode(id);
 
         // parcel.placedAt = formatToIST(parcel.placedAt);
         // parcel.lastModifiedAt = formatToIST(parcel.lastModifiedAt);
 
         // console.log(parcel);
-        return res.status(200).json({ message: "Successfully fetched your parcel", body: parcel, flag: true, qrCode: qrCodeURL });
+        return res.status(200).json({ message: "Successfully fetched your parcel", body: parcel, flag: true });
 
     } catch (err) {
         return res.status(500).json({ message: "An error occurred while tracking your parcel", error: err.message, flag: false });
@@ -729,6 +729,7 @@ module.exports.getParcelsForMemo = async (req, res) => {
     }
 };
 
+/*
 module.exports.generateQRCodes = async (req, res) => {
     try {
         const { id } = req.params;
@@ -796,6 +797,7 @@ module.exports.generateQRCodes = async (req, res) => {
         });
     }
 };
+*/
 
 module.exports.generateLR = async (req, res) => {
     try {
