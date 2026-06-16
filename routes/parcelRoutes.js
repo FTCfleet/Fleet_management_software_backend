@@ -33,6 +33,10 @@ router.route('/generate-lr-receipt-thermal-escpos/:id')
 router.route('/print/thermal-network')
     .post(catchAsync(networkPrintController.printToNetworkPrinter))
 
+// Send raw bytes to a network printer via TCP
+router.route('/print/network-raw')
+    .post(authenticateToken, catchAsync(networkPrintController.printRawToNetworkPrinter))
+
 // Discover network printers using mDNS/Bonjour
 router.route('/print/discover-printers')
     .get(catchAsync(networkPrintController.discoverPrinters))

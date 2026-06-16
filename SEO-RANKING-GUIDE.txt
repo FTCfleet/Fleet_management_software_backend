@@ -1,0 +1,584 @@
+═══════════════════════════════════════════════════════════════
+  COMPLETE SEO GUIDE - FRIENDS TRANSPORT COMPANY
+  Domain: friendstransport.in | Hostinger + Contabo VPS
+═══════════════════════════════════════════════════════════════
+
+🎯 TARGET KEYWORDS TO RANK FOR:
+═══════════════════════════════════════════════════════════════
+
+Primary Keywords:
+  • FTC Transport
+  • Friends Transport Company
+  • Friends Transport Hyderabad
+  • Transport Company Hyderabad
+  • Transport Service Hyderabad
+  • Courier Service Hyderabad
+  • Parcel Service Hyderabad
+  • Logistics Company Hyderabad
+
+Location-Based Keywords (Add all your warehouse cities):
+  • Transport Company in [City Name]
+  • Courier Service in [City Name]
+  • Parcel Delivery [City Name]
+  • Logistics Service [City Name]
+
+Example cities: Hyderabad, Secunderabad, Warangal, Nizamabad, 
+Karimnagar, Khammam, Nalgonda, Mahbubnagar, etc.
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 1: GOOGLE SEARCH CONSOLE SETUP (CRITICAL)
+═══════════════════════════════════════════════════════════════
+
+A. Add DNS Verification at Hostinger:
+--------------------------------------
+1. Login to Hostinger (hpanel.hostinger.com)
+2. Go to Domains → friendstransport.in → DNS/Nameservers
+3. Click "Manage" or "DNS Zone"
+4. Add New Record:
+   
+   Type:  TXT
+   Name:  @ (or leave blank)
+   Value: google-site-verification=3MDndysJnZ8ll5PmYDqJ_Z41X4yIIPH_3HjhQ1cb_yc
+   TTL:   3600
+
+5. Save and wait 15-30 minutes
+6. Go back to Google Search Console and click "Verify"
+
+B. Submit Sitemap:
+------------------
+1. After verification, go to "Sitemaps" in left menu
+2. Enter: sitemap.xml
+3. Click "Submit"
+4. Google will start indexing your pages
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 2: GOOGLE BUSINESS PROFILE (LOCAL SEO - MOST IMPORTANT)
+═══════════════════════════════════════════════════════════════
+
+This is THE MOST IMPORTANT for local searches!
+
+1. Go to: https://business.google.com
+2. Click "Manage now" or "Add your business"
+3. Fill in details:
+
+   Business Name: Friends Transport Company
+   Category: Logistics Service, Courier Service, Freight Forwarding
+   Address: Your main office address in Hyderabad
+   Phone: +91 7075124426
+   Website: https://friendstransport.in
+   
+4. Verify your business (Google will send postcard or call)
+5. Add photos: Office, trucks, warehouse, team
+6. Add business hours
+7. Add service areas (all cities you serve)
+8. Add description with keywords:
+   
+   "Friends Transport Company (FTC) is a leading transport and 
+   logistics service provider in Hyderabad, Telangana. We offer 
+   reliable parcel delivery, courier services, and freight 
+   forwarding across Telangana and India. With warehouses in 
+   [list cities], we ensure fast and secure delivery."
+
+9. Ask customers to leave reviews (VERY IMPORTANT for ranking)
+
+REPEAT THIS FOR EACH WAREHOUSE LOCATION!
+Create separate Google Business Profile for each city.
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 3: ON-PAGE SEO (WEBSITE OPTIMIZATION)
+═══════════════════════════════════════════════════════════════
+
+A. Homepage Meta Tags:
+----------------------
+Add to your index.html <head> section:
+
+<title>Friends Transport Company | FTC Transport Service Hyderabad</title>
+<meta name="description" content="Friends Transport Company (FTC) - Leading transport and logistics service in Hyderabad. Fast parcel delivery, courier service across Telangana. Track your shipment online. Call +91 7075124426">
+<meta name="keywords" content="FTC transport, friends transport company, transport service hyderabad, courier service hyderabad, parcel delivery hyderabad, logistics company telangana">
+
+<!-- Open Graph for social sharing -->
+<meta property="og:title" content="Friends Transport Company - FTC Hyderabad">
+<meta property="og:description" content="Leading transport and logistics service in Hyderabad">
+<meta property="og:url" content="https://friendstransport.in">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://friendstransport.in/logo.jpg">
+
+<!-- Local Business Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Friends Transport Company",
+  "alternateName": "FTC Transport",
+  "image": "https://friendstransport.in/logo.jpg",
+  "url": "https://friendstransport.in",
+  "telephone": "+917075124426",
+  "priceRange": "$$",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Your Street Address",
+    "addressLocality": "Hyderabad",
+    "addressRegion": "Telangana",
+    "postalCode": "500001",
+    "addressCountry": "IN"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 17.3850,
+    "longitude": 78.4867
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "opens": "09:00",
+    "closes": "18:00"
+  },
+  "sameAs": [
+    "https://www.facebook.com/friendstransport",
+    "https://www.instagram.com/friendstransport"
+  ]
+}
+</script>
+
+B. Create Content-Rich Pages:
+------------------------------
+Create these pages on your website:
+
+1. /services
+   - List all services (parcel delivery, courier, freight)
+   - Use keywords naturally
+
+2. /locations or /warehouses
+   - List all warehouse locations
+   - Create individual pages for each city:
+     /locations/hyderabad
+     /locations/warangal
+     /locations/nizamabad
+   - Each page should have:
+     * City name in title
+     * Address, phone, map
+     * "Transport service in [City]" content
+
+3. /about
+   - Company history
+   - Why choose FTC
+   - Use keywords naturally
+
+4. /contact
+   - Contact form
+   - All warehouse addresses
+   - Phone numbers
+   - Email
+
+5. /track (you already have this)
+   - Keep it prominent
+
+6. /blog (VERY IMPORTANT for SEO)
+   - Write articles like:
+     * "How to Choose Best Transport Service in Hyderabad"
+     * "FTC Transport: Your Trusted Logistics Partner"
+     * "Parcel Delivery Tips for Businesses"
+     * "Transport Services Across Telangana"
+   - Post 1-2 articles per month
+   - Use keywords naturally
+
+C. Homepage Content:
+--------------------
+Add text content to homepage (not just images):
+
+<h1>Friends Transport Company - Leading Transport Service in Hyderabad</h1>
+
+<p>Welcome to Friends Transport Company (FTC), your trusted logistics 
+partner in Hyderabad and across Telangana. We provide reliable parcel 
+delivery, courier services, and freight forwarding solutions.</p>
+
+<h2>Our Services</h2>
+<ul>
+  <li>Parcel Delivery across Telangana</li>
+  <li>Courier Service in Hyderabad</li>
+  <li>Freight Forwarding</li>
+  <li>Door-to-Door Delivery</li>
+  <li>Real-time Shipment Tracking</li>
+</ul>
+
+<h2>Service Locations</h2>
+<p>We operate warehouses in Hyderabad, Warangal, Nizamabad, Karimnagar, 
+and other major cities across Telangana.</p>
+
+<h2>Why Choose FTC Transport?</h2>
+<ul>
+  <li>Fast and reliable delivery</li>
+  <li>Competitive pricing</li>
+  <li>Real-time tracking</li>
+  <li>Experienced team</li>
+  <li>Wide network across Telangana</li>
+</ul>
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 4: TECHNICAL SEO
+═══════════════════════════════════════════════════════════════
+
+A. Create robots.txt:
+----------------------
+Create file: /var/www/html/robots.txt
+
+User-agent: *
+Allow: /
+Sitemap: https://friendstransport.in/sitemap.xml
+
+B. Create sitemap.xml:
+-----------------------
+Create file: /var/www/html/sitemap.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://friendstransport.in/</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://friendstransport.in/track</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://friendstransport.in/services</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://friendstransport.in/locations</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://friendstransport.in/about</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://friendstransport.in/contact</loc>
+    <lastmod>2026-02-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>
+
+C. Enable HTTPS (if not already):
+----------------------------------
+1. SSH into Contabo VPS
+2. Install Let's Encrypt SSL:
+   
+   sudo apt update
+   sudo apt install certbot python3-certbot-nginx
+   sudo certbot --nginx -d friendstransport.in -d www.friendstransport.in
+
+3. Auto-renewal:
+   sudo certbot renew --dry-run
+
+D. Improve Page Speed:
+-----------------------
+1. Compress images (use TinyPNG or similar)
+2. Enable Gzip compression
+3. Minify CSS/JS
+4. Use browser caching
+5. Test at: https://pagespeed.web.dev/
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 5: OFF-PAGE SEO (BACKLINKS & CITATIONS)
+═══════════════════════════════════════════════════════════════
+
+A. Business Directories (Free Listings):
+-----------------------------------------
+List your business on these platforms:
+
+India-Specific:
+  • JustDial (justdial.com) - VERY IMPORTANT
+  • IndiaMART (indiamart.com)
+  • Sulekha (sulekha.com)
+  • TradeIndia (tradeindia.com)
+  • ExportersIndia (exportersindia.com)
+  • 99acres Business (for office listing)
+
+Global:
+  • Bing Places (bingplaces.com)
+  • Apple Maps (mapsconnect.apple.com)
+  • Yelp (yelp.com)
+  • Yellow Pages (yellowpages.com)
+  • Foursquare (foursquare.com)
+
+Transport-Specific:
+  • TransportDirectory.in
+  • LogisticsDirectory.in
+  • Search for "transport directory India"
+
+B. Social Media Presence:
+--------------------------
+Create and maintain profiles:
+
+  • Facebook Business Page
+  • Instagram Business
+  • LinkedIn Company Page
+  • Twitter/X
+  • YouTube (post videos of operations)
+
+Post regularly:
+  - Service updates
+  - Customer testimonials
+  - Behind-the-scenes
+  - Tips and guides
+  - Link back to website
+
+C. Get Reviews:
+---------------
+Ask satisfied customers to leave reviews on:
+  • Google Business Profile (MOST IMPORTANT)
+  • Facebook
+  • JustDial
+  • Other directories
+
+More reviews = Higher ranking!
+
+D. Local Citations:
+-------------------
+Ensure NAP (Name, Address, Phone) is consistent everywhere:
+  • Same business name
+  • Same address format
+  • Same phone number
+  • Same website URL
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 6: CONTENT MARKETING
+═══════════════════════════════════════════════════════════════
+
+A. Start a Blog:
+----------------
+Write articles targeting your keywords:
+
+Topics:
+  • "Top 10 Transport Companies in Hyderabad"
+  • "How to Track Your Parcel with FTC Transport"
+  • "Benefits of Using Professional Courier Service"
+  • "FTC Transport: Connecting Telangana"
+  • "Guide to Parcel Delivery in Hyderabad"
+  • "Why Choose FTC for Your Logistics Needs"
+
+Post 2-4 articles per month
+Use keywords naturally
+Add images and videos
+Share on social media
+
+B. Create Videos:
+-----------------
+Upload to YouTube:
+  • Company introduction
+  • How to track parcels
+  • Warehouse tours
+  • Customer testimonials
+  • Service explanations
+
+Optimize video titles and descriptions with keywords
+
+C. Customer Testimonials:
+--------------------------
+Add testimonials page on website
+Include customer names and cities
+Ask permission to use photos
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 7: LOCAL SEO OPTIMIZATION
+═══════════════════════════════════════════════════════════════
+
+A. Create Location Pages:
+--------------------------
+For each warehouse city, create a page:
+
+URL: /locations/hyderabad
+Title: Transport Service in Hyderabad | FTC Transport
+Content:
+  - "Friends Transport Company in Hyderabad"
+  - Address, phone, map
+  - Services available in Hyderabad
+  - Nearby areas served
+  - Customer testimonials from Hyderabad
+
+Repeat for: Warangal, Nizamabad, Karimnagar, etc.
+
+B. Add Google Maps:
+--------------------
+Embed Google Maps on contact and location pages
+
+C. Use Local Keywords:
+----------------------
+In content, naturally use:
+  - "transport service in Hyderabad"
+  - "courier near me"
+  - "parcel delivery Telangana"
+  - "logistics company Hyderabad"
+  - City names + service names
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 8: MONITOR & IMPROVE
+═══════════════════════════════════════════════════════════════
+
+A. Google Search Console:
+--------------------------
+Check weekly:
+  • Which keywords bring traffic
+  • Which pages rank
+  • Any errors
+  • Click-through rates
+
+B. Google Analytics:
+--------------------
+1. Create account at analytics.google.com
+2. Add tracking code to website
+3. Monitor:
+   - Traffic sources
+   - Popular pages
+   - User behavior
+   - Conversions
+
+C. Track Rankings:
+------------------
+Use free tools:
+  • Google Search Console
+  • Ubersuggest (neilpatel.com/ubersuggest)
+  • SEMrush (limited free)
+
+Check monthly:
+  - Where you rank for target keywords
+  - Competitor rankings
+  - New keyword opportunities
+
+
+═══════════════════════════════════════════════════════════════
+  STEP 9: PAID ADVERTISING (OPTIONAL BUT EFFECTIVE)
+═══════════════════════════════════════════════════════════════
+
+A. Google Ads:
+--------------
+Start with small budget (₹5,000-10,000/month)
+
+Target keywords:
+  • "transport service hyderabad"
+  • "courier service near me"
+  • "parcel delivery hyderabad"
+
+Location targeting: Hyderabad + Telangana
+
+B. Facebook/Instagram Ads:
+---------------------------
+Target:
+  • Location: Hyderabad, Telangana
+  • Age: 25-55
+  • Interests: Business, logistics, e-commerce
+
+Budget: ₹3,000-5,000/month
+
+
+═══════════════════════════════════════════════════════════════
+  QUICK WIN CHECKLIST (DO THESE FIRST)
+═══════════════════════════════════════════════════════════════
+
+Week 1:
+☐ Add DNS verification at Hostinger
+☐ Verify Google Search Console
+☐ Submit sitemap.xml
+☐ Create Google Business Profile (main office)
+☐ Add meta tags to homepage
+☐ Create robots.txt and sitemap.xml
+
+Week 2:
+☐ List on JustDial
+☐ List on IndiaMART
+☐ Create Facebook Business Page
+☐ Create Instagram Business
+☐ Add location pages for each warehouse
+
+Week 3:
+☐ Write first 3 blog posts
+☐ Get 5 Google reviews from customers
+☐ List on Bing Places
+☐ Create LinkedIn Company Page
+
+Week 4:
+☐ Create YouTube channel
+☐ Upload 2-3 videos
+☐ List on 5 more directories
+☐ Start asking all customers for reviews
+
+Month 2-3:
+☐ Continue blogging (2 posts/month)
+☐ Get more reviews (target 20+ on Google)
+☐ Create Google Business for other locations
+☐ Monitor and optimize based on Search Console data
+
+
+═══════════════════════════════════════════════════════════════
+  EXPECTED TIMELINE FOR RESULTS
+═══════════════════════════════════════════════════════════════
+
+Week 1-2:   Google starts indexing your site
+Week 3-4:   Appear in search results (low positions)
+Month 2-3:  Start ranking on page 2-3 for some keywords
+Month 4-6:  Move to page 1 for long-tail keywords
+Month 6-12: Rank on page 1 for main keywords (with consistent effort)
+
+Local searches (with Google Business): 1-3 months
+Competitive keywords: 6-12 months
+
+
+═══════════════════════════════════════════════════════════════
+  MOST IMPORTANT FACTORS FOR RANKING
+═══════════════════════════════════════════════════════════════
+
+1. Google Business Profile (40% importance for local)
+2. Customer Reviews (30% importance)
+3. Quality Content on Website (20% importance)
+4. Backlinks from Directories (10% importance)
+
+Focus on these 4 things first!
+
+
+═══════════════════════════════════════════════════════════════
+  NEED HELP? NEXT STEPS
+═══════════════════════════════════════════════════════════════
+
+1. Start with Google Search Console verification at Hostinger
+2. Create Google Business Profile
+3. Add meta tags and content to website
+4. List on JustDial and IndiaMART
+5. Start collecting reviews
+
+Do these 5 things in the next 7 days, and you'll be on your way
+to ranking!
+
+
+═══════════════════════════════════════════════════════════════
+Generated: February 2026
+Company: Friends Transport Company (FTC)
+Domain: friendstransport.in
+Target: Hyderabad, Telangana, India
+═══════════════════════════════════════════════════════════════

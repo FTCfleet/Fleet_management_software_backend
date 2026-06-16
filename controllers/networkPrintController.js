@@ -289,6 +289,110 @@ module.exports.printToNetworkPrinter = async (req, res) => {
     client.setTimeout(10000);
 };
 
+/**
+ * Send raw bytes directly to a network printer via TCP
+ * POST /api/parcel/print/network-raw
+ *
+ * Request body:
+ * {
+ *   rawData: "raw byte string",
+ *   printerIP: "192.168.1.100",
+ *   printerPort: 9100
+ * }
+ */
+module.exports.printRawToNetworkPrinter = async (req, res) => {
+    const { rawData, printerIP, printerPort } = req.body;
+
+    if (!rawData) {
+        return res.status(400).json({ success: false, error: 'rawData is required' });
+    }
+    if (!printerIP) {
+        return res.status(400).json({ success: false, error: 'Printer IP address is required' });
+    }
+
+    const port = parseInt(printerPort) || 9100;
+
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(printerIP)) {
+        return res.status(400).json({ success: false, error: 'Invalid IP address format' });
+    }
+    if (port < 1 || port > 65535) {
+        return res.status(400).json({ success: false, error: 'Invalid port number (must be 1-65535)' });
+    }
+
+    console.log(`📡 Sending raw print job to ${printerIP}:${port}`);
+
+    const client = new net.Socket();
+    let connectionTimeout;
+    let isResolved = false;
+
+    connectionTimeout = setTimeout(() => {
+        if (!isResolved) {
+            isResolved = true;
+            client.destroy();
+            return res.status(504).json({ success: false, error: 'Connection timeout - printer not responding', code: 'ETIMEDOUT' });
+        }
+    }, 5000);
+
+    client.connect(port, printerIP, () => {
+        clearTimeout(connectionTimeout);
+        console.log(`✓ Connected to printer at ${printerIP}:${port}`);
+        try {
+            const buffer = Buffer.from(rawData, 'binary');
+            client.write(buffer, (err) => {
+                if (err && !isResolved) {
+                    isResolved = true;
+                    client.destroy();
+                    return res.status(500).json({ success: false, error: 'Failed to send data to printer', details: err.message });
+                }
+            });
+            client.end();
+        } catch (err) {
+            clearTimeout(connectionTimeout);
+            if (!isResolved) {
+                isResolved = true;
+                client.destroy();
+                return res.status(500).json({ success: false, error: 'Failed to process print job', details: err.message });
+            }
+        }
+    });
+
+    client.on('close', () => {
+        clearTimeout(connectionTimeout);
+        if (!isResolved) {
+            isResolved = true;
+            console.log(`✓ Raw print job completed for ${printerIP}:${port}`);
+            return res.json({ success: true, message: 'Print job sent successfully' });
+        }
+    });
+
+    client.on('error', (err) => {
+        clearTimeout(connectionTimeout);
+        if (!isResolved) {
+            isResolved = true;
+            const msgs = {
+                ECONNREFUSED: 'Printer offline or wrong IP address',
+                ETIMEDOUT: 'Printer not responding (timeout)',
+                EHOSTUNREACH: 'Printer not reachable on network',
+                ENETUNREACH: 'Network unreachable',
+                ENOTFOUND: 'Invalid printer IP address',
+            };
+            return res.status(500).json({ success: false, error: msgs[err.code] || err.message, code: err.code });
+        }
+    });
+
+    client.on('timeout', () => {
+        clearTimeout(connectionTimeout);
+        if (!isResolved) {
+            isResolved = true;
+            client.destroy();
+            return res.status(504).json({ success: false, error: 'Connection timeout - printer not responding', code: 'ETIMEDOUT' });
+        }
+    });
+
+    client.setTimeout(10000);
+};
+
 module.exports.getQZSignature = async (req, res) => {
     try {
         const data = req.body.request;
