@@ -69,7 +69,7 @@ function idFormatter(trackingIds) {
 };
 
 // NEW: Send order booked notification to receiver
-async function sendOrderBookedMessage(phoneNo, lrNumber) {
+async function sendOrderBookedMessage_real(phoneNo, lrNumber) {
     try {
         // Format phone number (extract last 10 digits)
         const formattedPhone = formatPhoneNumber(phoneNo);
@@ -131,121 +131,174 @@ async function sendOrderBookedMessage(phoneNo, lrNumber) {
     }
 }
 
-async function sendDeliveryMessage(phoneNo, name, trackingId){
-    try{
-        // Format phone number
-        const formattedPhone = formatPhoneNumber(phoneNo);
-        
-        if (!formattedPhone || formattedPhone.length !== 10) {
-            console.log(`Invalid phone number: ${phoneNo}`);
-            return 0;
-        }
-
-        const respose= await axios({
-            url: process.env.WHATSAPP_URL,
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
-            },
-            data: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: `+91${formattedPhone}`,
-                type: 'template',
-                template: {
-                    name: 'parcel_dispatched',
-                    language: {
-                        code: 'en'
-                    },
-                    components:[
-                        {
-                            type: 'body',
-                            parameters:[
-                                {
-                                    type: 'text',
-                                    text: name,
-                                },
-                                {
-                                    type: 'text',
-                                    text: trackingId,
-                                }
-                            ]
-                        }
-                    ]
-                }
-            })
-        });
-        return 1;
-        // console.log(respose.data); 
-        // console.log({name, phoneNo, trackingId});
-    }catch(err){
-        console.log("Failed to send delivery message:", err.response?.data || err.message);
-        return 0;
-    }
-}
-
-async function sendOTPMessage(phoneNo){
-    try{
-        const otp = generateOTP();
-        storeOTP(phoneNo, otp);
-        
-        // Format phone number
-        const formattedPhone = formatPhoneNumber(phoneNo);
-        
-        if (!formattedPhone || formattedPhone.length !== 10) {
-            console.log(`Invalid phone number: ${phoneNo}`);
-            return 0;
-        }
+async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount){
+    var myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("authkey", process.env.WHATSAPP_TOKEN);
     
-        const respose = await axios({
-            url: process.env.WHATSAPP_URL,
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
-            },
-            data: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: `+91${formattedPhone}`,
-                type: 'template',
-                template: {
-                    name: 'otp',
-                    language: {
-                        code: 'en_US'
-                    },
-                    components:[
-                        {
-                            type: 'body',
-                            parameters:[
-                                {
-                                    type: 'text',
-                                    text: otp,
-                                },
-                            ]
-                        },
-                        {
-                            type: 'button',
-                                sub_type: 'url',
-                                index: "0",
-                                parameters: [
-                                    {
-                                        type: 'text',
-                                        text: otp
-                                    }
-                            ]
+    var raw = JSON.stringify({
+        "integrated_number": `91${process.env.WHATSAPP_NUMBER}`,
+        "content_type": "template",
+        "payload": {
+            "messaging_product": "whatsapp",
+            "type": "template",
+            "template": {
+                "name": "order_created",
+                "language": {
+                    "code": "en",
+                    "policy": "deterministic"
+                },
+                "namespace": `${process.env.WHATSAPP_NAMESPACE}`,
+                "to_and_components": [
+                    {
+                        "to": [
+                            `91${formatPhoneNumber(phoneNo)}`
+                        ],
+                        "components": {
+                            "body_item_count": {
+                                "type": "text",
+                                "value": `${itemCount}`,
+                                "parameter_name": "item_count"
+                            },
+                            "body_payment_type": {
+                                "type": "text",
+                                "value": `${paymentType}`,
+                                "parameter_name": "payment_type"
+                            },
+                            "body_receiver_name": {
+                                "type": "text",
+                                "value": `${receiverName}`,
+                                "parameter_name": "receiver_name"
+                            },
+                            "body_tracking_id": {
+                                "type": "text",
+                                "value": `${trackingId}`,
+                                "parameter_name": "tracking_id"
+                            },
+                            "body_website_url": {
+                                "type": "text",
+                                "value": "https://www.friendstransport.in/track",
+                                "parameter_name": "website_url"
+                            },
+                            "body_dest": {
+                                "type": "text",
+                                "value": `${destination}`,
+                                "parameter_name": "dest"
+                            }
                         }
-                    ]    
-                }
-            })
-        });
-        // console.log(respose.data);
-        // console.log(`OTP for ${phoneNo} is ${otp}`);
-        return 1;
-    }catch(err){
-        console.log("Failed to send OTP message:", err.response?.data || err.message);
-        return 0;
-    }
-}
+                    }
+                ]
+            }
+        }
+    });
+
+    var requestOptions = {
+    method: 'POST',
+    headers: myHeaders,
+    body: raw,
+    redirect: 'follow'
+    };
+
+    fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
+    .then(response => response.text())
+    .then(result => console.log(result))
+    .catch(error => console.log('error', error));
+
+};
+
+async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination, vehicleNo) {
+    const mapUrl = deliveryOffices[destination].mapUrl;
+    const formattedTrackingIds = idFormatter(trackingIds);
+    const destinationPhone = deliveryOffices[destination].phone;
+    const destinationName = deliveryOffices[destination].name;
+    console.log(` ${phoneNo} ${formattedTrackingIds}
+        src: ${src}, vehicleNo: ${vehicleNo}
+        mapUrl: ${mapUrl}, destinationPhone: ${destinationPhone}, destinationName: ${destinationName}
+        `);
+    
+    var myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("authkey", process.env.WHATSAPP_TOKEN);
+
+    var raw = JSON.stringify({
+        "integrated_number": `91${process.env.WHATSAPP_NUMBER}`,
+        "content_type": "template",
+        "payload": {
+            "messaging_product": "whatsapp",
+            "type": "template",
+            "template": {
+                "name": "order_delivered",
+                "language": {
+                    "code": "en_US",
+                    "policy": "deterministic"
+                },
+                "namespace": `${process.env.WHATSAPP_NAMESPACE}`,
+                "to_and_components": [
+                    {
+                        "to": [
+                            `91${formatPhoneNumber(phoneNo)}`
+                        ],
+                        "components": {
+                            "body_map_url": {
+                                "type": "text",
+                                "value": mapUrl,
+                                "parameter_name": "map_url"
+                            },
+                            "body_tracking_ids": {
+                                "type": "text",
+                                "value": `${formattedTrackingIds}`,
+                                "parameter_name": "tracking_ids"
+                            },
+                            "body_dest": {
+                                "type": "text",
+                                "value": `${destinationName}`,
+                                "parameter_name": "dest"
+                            },
+                            "body_vehicle_no": {
+                                "type": "text",
+                                "value": `"${vehicleNo}`,
+                                "parameter_name": "vehicle_no"
+                            },
+                            "body_src": {
+                                "type": "text",
+                                "value": `${src}`,
+                                "parameter_name": "src"
+                            },
+                            "body_dest_phone_no": {
+                                "type": "text",
+                                "value": `${destinationPhone}`,
+                                "parameter_name": "dest_phone_no"
+                            },
+                            "body_website_url": {
+                                "type": "text",
+                                "value": "https://www.friendstransport.in",
+                                "parameter_name": "website_url"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    });
+    var requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: raw,
+        redirect: 'follow'
+    };
+
+    fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
+    .then(response => response.text())
+    .then(result => console.log(result))
+    .catch(error => console.log('error', error));
+
+};
+
+async function sendOTPMessage(phoneNo) {
+    return `Implementation pending, received phoneNo: ${phoneNo}`;
+};
+
+
 
 module.exports = {
     sendOrderDispatchedMessage,
