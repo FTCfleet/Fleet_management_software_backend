@@ -64,8 +64,7 @@ function formatPhoneNumber(phoneNo) {
 }
 
 function idFormatter(trackingIds) {
-    let st = 1;
-    return trackingIds.map(id => `${st++}. ${id}`).join("\n");
+    return trackingIds.join(", ");
 };
 
 async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount){
