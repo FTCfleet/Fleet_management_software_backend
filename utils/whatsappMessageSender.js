@@ -68,69 +68,6 @@ function idFormatter(trackingIds) {
     return trackingIds.map(id => `${st++}. ${id}`).join("\n");
 };
 
-// NEW: Send order booked notification to receiver
-async function sendOrderBookedMessage_real(phoneNo, lrNumber) {
-    try {
-        // Format phone number (extract last 10 digits)
-        const formattedPhone = formatPhoneNumber(phoneNo);
-        
-        if (!formattedPhone || formattedPhone.length !== 10) {
-            console.log(`Invalid phone number: ${phoneNo}`);
-            return 0;
-        }
-
-        console.log(`Sending order booked notification to: +91 ${formattedPhone}, LR: ${lrNumber}`);
-
-        const response = await axios({
-            url: process.env.WHATSAPP_URL,
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
-            },
-            data: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: `+91${formattedPhone}`,
-                type: 'template',
-                template: {
-                    name: 'order_booked',
-                    language: {
-                        code: 'en'
-                    },
-                    components: [
-                        {
-                            type: 'body',
-                            parameters: [
-                                {
-                                    type: 'text',
-                                    text: lrNumber,
-                                }
-                            ]
-                        },
-                        {
-                            type: 'button',
-                            sub_type: 'copy_code',
-                            index: '0',
-                            parameters: [
-                                {
-                                    type: 'coupon_code',
-                                    coupon_code: lrNumber
-                                }
-                            ]
-                        }
-                    ]
-                }
-            })
-        });
-
-        console.log(`✓ WhatsApp notification sent to receiver: ${formattedPhone}`);
-        return 1;
-    } catch (err) {
-        console.error('Failed to send order booked message:', err.response?.data || err.message);
-        return 0;
-    }
-}
-
 async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount){
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
