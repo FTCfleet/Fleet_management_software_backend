@@ -1,5 +1,6 @@
 const axios = require("axios");
 const crypto = require('node:crypto');
+const whatsappQueue = require('./whatsappQueue');
 
 const deliveryOffices = {
     "KNR": { name: "Karimnagar (KNR)", phone: "+919908690827", mapUrl: "https://maps.app.goo.gl/hvLQ4sweDfUqjVTG9?g_st=iw" },
@@ -67,7 +68,7 @@ function idFormatter(trackingIds) {
     return trackingIds.join(", ");
 };
 
-async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount){
+async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount, items, senderName){
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
     myHeaders.append("authkey", process.env.WHATSAPP_TOKEN);
@@ -96,30 +97,40 @@ async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentT
                                 "value": `${itemCount}`,
                                 "parameter_name": "item_count"
                             },
+                            "body_items": {
+                                "type": "text",
+                                "value": `${items}`,
+                                "parameter_name": "items"
+                            },
+                            "body_sender_name": {
+                                "type": "text",
+                                "value": `${senderName}`,
+                                "parameter_name": "sender_name"
+                            },
                             "body_payment_type": {
                                 "type": "text",
                                 "value": `${paymentType}`,
                                 "parameter_name": "payment_type"
-                            },
-                            "body_receiver_name": {
-                                "type": "text",
-                                "value": `${receiverName}`,
-                                "parameter_name": "receiver_name"
                             },
                             "body_tracking_id": {
                                 "type": "text",
                                 "value": `${trackingId}`,
                                 "parameter_name": "tracking_id"
                             },
-                            "body_website_url": {
-                                "type": "text",
-                                "value": "https://www.friendstransport.in/track",
-                                "parameter_name": "website_url"
-                            },
                             "body_dest": {
                                 "type": "text",
                                 "value": `${destination}`,
                                 "parameter_name": "dest"
+                            },
+                            "body_receiver_name": {
+                                "type": "text",
+                                "value": `${receiverName}`,
+                                "parameter_name": "receiver_name"
+                            },
+                            "body_website_url": {
+                                "type": "text",
+                                "value": "https://www.friendstransport.in",
+                                "parameter_name": "website_url"
                             }
                         }
                     }
@@ -135,21 +146,22 @@ async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentT
     redirect: 'follow'
     };
 
-    fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
-    .then(response => response.text())
-    .then(result => console.log(result))
-    .catch(error => console.log('error', error));
+    whatsappQueue.enqueue(
+        () => fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
+            .then(response => response.text())
+            .then(result => console.log(result)),
+        `OrderBooked:${formatPhoneNumber(phoneNo)}`
+    );
 
 };
 
-async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination, vehicleNo) {
+async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination, vehicleNo, receiverName) {
     const mapUrl = deliveryOffices[destination].mapUrl;
     const formattedTrackingIds = idFormatter(trackingIds);
-    const destinationPhone = deliveryOffices[destination].phone;
-    const destinationName = deliveryOffices[destination].name;
+    const destinationName = `${deliveryOffices[destination].name} (${deliveryOffices[destination].phone})`;
     console.log(` ${phoneNo} ${formattedTrackingIds}
         src: ${src}, vehicleNo: ${vehicleNo}
-        mapUrl: ${mapUrl}, destinationPhone: ${destinationPhone}, destinationName: ${destinationName}
+        mapUrl: ${mapUrl}, destinationName: ${destinationName}
         `);
     
     var myHeaders = new Headers();
@@ -177,7 +189,7 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
                         "components": {
                             "body_map_url": {
                                 "type": "text",
-                                "value": mapUrl,
+                                "value": `${mapUrl}`,
                                 "parameter_name": "map_url"
                             },
                             "body_tracking_ids": {
@@ -192,7 +204,7 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
                             },
                             "body_vehicle_no": {
                                 "type": "text",
-                                "value": `"${vehicleNo}`,
+                                "value": `${vehicleNo}`,
                                 "parameter_name": "vehicle_no"
                             },
                             "body_src": {
@@ -200,10 +212,10 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
                                 "value": `${src}`,
                                 "parameter_name": "src"
                             },
-                            "body_dest_phone_no": {
+                            "body_receiver_name": {
                                 "type": "text",
-                                "value": `${destinationPhone}`,
-                                "parameter_name": "dest_phone_no"
+                                "value": `${receiverName}`,
+                                "parameter_name": "receiver_name"
                             },
                             "body_website_url": {
                                 "type": "text",
@@ -223,10 +235,12 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
         redirect: 'follow'
     };
 
-    fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
-    .then(response => response.text())
-    .then(result => console.log(result))
-    .catch(error => console.log('error', error));
+    whatsappQueue.enqueue(
+        () => fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
+            .then(response => response.text())
+            .then(result => console.log(result)),
+        `OrderDispatched:${formatPhoneNumber(phoneNo)}`
+    );
 
 };
 

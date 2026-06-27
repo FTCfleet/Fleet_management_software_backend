@@ -310,6 +310,7 @@ module.exports.newParcel = async (req, res) => {
         let totalFreight = 0;
         let totalHamali = 0;
         let totalQuantity = 0;
+        const itemNames = [];
         for (const item of items) {
             const typeName = normalizeItemTypeName(item.type);
             if (!typeName) {
@@ -358,6 +359,7 @@ module.exports.newParcel = async (req, res) => {
             totalFreight += (freightDb || 0) * item.quantity;
             totalHamali += (hamaliDb || 0) * item.quantity;
             totalQuantity += item.quantity;
+            itemNames.push(`${rawItemName} (${item.quantity})`);
         }
 
         await Promise.all([
@@ -404,10 +406,12 @@ module.exports.newParcel = async (req, res) => {
         sendOrderBookedMessage(
             whatsAppNo, 
             trackingId, 
-            destinationWarehouseId.name, 
+            `${destinationWarehouseId.name} (${destinationWarehouseId.phoneNo})`, 
             payment, 
             receiver.name, 
-            totalQuantity
+            totalQuantity,
+            itemNames.join(", "),
+            sender.name
         );
 
         return res.status(200).json({ message: "Parcel created successfully", body: trackingId, flag: true });
@@ -1051,7 +1055,8 @@ module.exports.editParcel = async (req, res) => {
                 parcel.items.push(newItem._id);
             }
         }
-
+        console.log(parcel.items);
+        console.log(updateData.delItems);
         if (updateData.delItems) {
             for (const itemId of updateData.delItems) {
                 const itemIndex = parcel.items.indexOf(itemId);
@@ -1114,7 +1119,28 @@ module.exports.editParcel = async (req, res) => {
 
         parcel.lastModifiedBy = req.user._id;
         parcel.lastModifiedAt = getNow();
-        await parcel.save();
+
+        const newParcel = await parcel.save();
+        await newParcel.populate([
+            "sender",
+            "receiver",
+            "destinationWarehouse",
+            "items",
+            ]);
+
+        console.log(newParcel);
+        /*
+        sendOrderBookedMessage(
+            updateData.whatsappNo, 
+            id, 
+            `${newParcel.destinationWarehouse.name} (${newParcel.destinationWarehouse.phoneNo})`, 
+            newParcel.payment, 
+            newParcel.receiver.name, 
+            newParcel.items.reduce((acc, item) => acc + item.quantity, 0),
+            newParcel.items.map(item => `${item.name} (${item.quantity})`).join(", "),
+            newParcel.sender.name
+        );
+        */
 
         return res.status(200).json({ flag: true, message: "Parcel updated successfully", body: parcel, flag: true });
     } catch (err) {

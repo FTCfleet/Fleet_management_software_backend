@@ -104,7 +104,7 @@ module.exports.createLedger = async (req, res) => {
         const parcels = [];
         const groupedParcels = new Map();
         for (const id of data.ids) {
-            let parcel = await Parcel.findOne({ trackingId: id }).populate('receiver sourceWarehouse destinationWarehouse');
+            let parcel = await Parcel.findOne({ trackingId: id }).populate('receiver sourceWarehouse destinationWarehouse items');
             if (parcel) parcels.push(parcel._id);
             const receiverPhone = parcel.receiver?.phoneNo;
             const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
@@ -122,15 +122,20 @@ module.exports.createLedger = async (req, res) => {
             const key = `${receiverPhone}::${sourceWarehouseId}::${destinationWarehouseId}`;
 
             if (!groupedParcels.has(key)) {
+                let receiverName = '';
+                if (parcel.receiver?.name && parcel.receiver?.name !== 'N/A'){
+                    receiverName = parcel.receiver?.name;
+                }
                 groupedParcels.set(key, {
                     receiverPhone,
                     sourceWarehouseName: parcel.sourceWarehouse?.name,
                     destinationWarehouseId: parcel.destinationWarehouse?.warehouseID,
                     trackingIds: [],
+                    receiverName 
                 });
             }
-
-            groupedParcels.get(key).trackingIds.push(id);
+            const itemCount = parcel.items.reduce((acc, item) => acc + item.quantity, 0);
+            groupedParcels.get(key).trackingIds.push(`${id} (${itemCount})`);
         }
 
         let src= req.user.warehouseCode;
@@ -196,7 +201,8 @@ module.exports.createLedger = async (req, res) => {
                 receiverPhone,
                 sourceWarehouseName,
                 destinationWarehouseId,
-                trackingIds
+                trackingIds,
+                receiverName
                 } = group;
 
             for (let i = 0; i < trackingIds.length; i += 10) {
@@ -208,7 +214,8 @@ module.exports.createLedger = async (req, res) => {
                     batch,
                     sourceWarehouseName,
                     destinationWarehouseId,
-                    data.vehicleNo
+                    data.vehicleNo,
+                    receiverName
                 ).catch((err) => {
                     console.error(
                     `WhatsApp send failed for ${receiverPhone}`,
@@ -289,7 +296,7 @@ module.exports.createLedgerByLL = async (req, res) => {
 
         const groupedParcels = new Map();
         for (const parcelId of ll.validParcels) {
-            let parcel = await Parcel.findOne({ _id: parcelId }).populate('receiver sourceWarehouse destinationWarehouse');
+            let parcel = await Parcel.findOne({ _id: parcelId }).populate('receiver sourceWarehouse destinationWarehouse items');
             const receiverPhone = parcel.receiver?.phoneNo;
             const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
             const destinationWarehouseId =
@@ -306,15 +313,21 @@ module.exports.createLedgerByLL = async (req, res) => {
             const key = `${receiverPhone}::${sourceWarehouseId}::${destinationWarehouseId}`;
 
             if (!groupedParcels.has(key)) {
+                let receiverName = '';
+                if (parcel.receiver?.name && parcel.receiver?.name !== 'N/A'){
+                    receiverName = parcel.receiver?.name;
+                }
                 groupedParcels.set(key, {
                     receiverPhone,
                     sourceWarehouseName: parcel.sourceWarehouse?.name,
                     destinationWarehouseId: parcel.destinationWarehouse?.warehouseID,
                     trackingIds: [],
+                    receiverName
                 });
             }
 
-            groupedParcels.get(key).trackingIds.push(id);
+            const itemCount = parcel.items.reduce((acc, item) => acc + item.quantity, 0);
+            groupedParcels.get(key).trackingIds.push(`${parcel.trackingId} (${itemCount})`);
         }
         
         Parcel.bulkWrite(
@@ -341,7 +354,8 @@ module.exports.createLedgerByLL = async (req, res) => {
                 receiverPhone,
                 sourceWarehouseName,
                 destinationWarehouseId,
-                trackingIds
+                trackingIds,
+                receiverName
             } = group;
 
             for (let i = 0; i < trackingIds.length; i += 10) {
@@ -353,7 +367,8 @@ module.exports.createLedgerByLL = async (req, res) => {
                     batch,
                     sourceWarehouseName,
                     destinationWarehouseId,
-                    data.vehicleNo
+                    data.vehicleNo,
+                    receiverName
                 ).catch((err) => {
                     console.error(
                     `WhatsApp send failed for ${receiverPhone}`,
