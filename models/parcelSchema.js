@@ -100,6 +100,11 @@ const parcelSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 0
+    },
+
+    whatsappNo: {
+        type: String,
+        required: false
     }
 });
 

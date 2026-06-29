@@ -92,21 +92,6 @@ app.post('/api/logs', authenticateToken, (req, res) => {
     }
     res.status(200).json({ success: true });
 });
-// app.use('/api/backup', backupRoutes);
-
-/*
-app.use('/fix', async (req, res) => {
-    const warehouses = await Warehouse.find({});
-
-    for (const wh of warehouses) {
-    //   wh.sequence = 0; // default starting value
-      wh.memoSequence = 0; // default starting value
-      await wh.save();
-    }
-    return res.send("Fixed");
-});
-
-*/
 
 /*
 app.use('/api/send-sms', async (req, res) => {

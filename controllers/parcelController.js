@@ -287,7 +287,7 @@ async function removeOlderSequenceParcel(trackingId) {
 
 module.exports.newParcel = async (req, res) => {
     try {
-        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, payment, isDoorDelivery, doorDeliveryCharge, whatsAppNo } = req.body;
+        let { items, senderDetails, receiverDetails, destinationWarehouse, sourceWarehouse, payment, isDoorDelivery, doorDeliveryCharge, whatsappNo } = req.body;
         if (!sourceWarehouse) {
             // sourceWarehouse = req.user.warehouseCode;
             sourceWarehouse = await Warehouse.findById(req.user.warehouseCode);
@@ -389,6 +389,7 @@ module.exports.newParcel = async (req, res) => {
             lastModifiedAt: getNow(),
             addedBy: req.user._id,
             lastModifiedBy: req.user._id,
+            whatsappNo: whatsappNo ?? '',
             doorDeliveryCharge: isDoorDelivery ? toDbValue(doorDeliveryCharge) : 0
         });
         // console.log(newParcel.placedAt);
@@ -402,9 +403,9 @@ module.exports.newParcel = async (req, res) => {
                 paymentStatus: 'To Pay'
             });
         }
-
+        console.log(whatsappNo);
         sendOrderBookedMessage(
-            whatsAppNo, 
+            whatsappNo, 
             trackingId, 
             `${destinationWarehouseId.name} (${destinationWarehouseId.phoneNo})`, 
             payment, 
@@ -1109,10 +1110,16 @@ module.exports.editParcel = async (req, res) => {
         if( updateData.payment) {
             parcel.payment = updateData.payment;
         }
+        
         if (updateData.isDoorDelivery !== undefined) {
             parcel.isDoorDelivery = updateData.isDoorDelivery;
             parcel.doorDeliveryCharge = updateData.isDoorDelivery ? toDbValue(updateData.doorDeliveryCharge || 0) : 0;
         }
+        
+        if (updateData.whatsappNo !== undefined) {
+            parcel.whatsappNo = updateData.whatsappNo;
+        }
+
         if (req.user.role === 'admin' && updateData.status) {
             parcel.status = updateData.status;
         }
@@ -1126,12 +1133,11 @@ module.exports.editParcel = async (req, res) => {
             "receiver",
             "destinationWarehouse",
             "items",
-            ]);
+        ]);
 
-        console.log(newParcel);
-        /*
+        // console.log(newParcel);
         sendOrderBookedMessage(
-            updateData.whatsappNo, 
+            newParcel.whatsappNo, 
             id, 
             `${newParcel.destinationWarehouse.name} (${newParcel.destinationWarehouse.phoneNo})`, 
             newParcel.payment, 
@@ -1140,7 +1146,6 @@ module.exports.editParcel = async (req, res) => {
             newParcel.items.map(item => `${item.name} (${item.quantity})`).join(", "),
             newParcel.sender.name
         );
-        */
 
         return res.status(200).json({ flag: true, message: "Parcel updated successfully", body: parcel, flag: true });
     } catch (err) {
