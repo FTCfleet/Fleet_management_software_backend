@@ -57,6 +57,8 @@ function formatPhoneNumber(phoneNo) {
     // Remove all non-digit characters
     const digitsOnly = phoneNo.toString().replace(/\D/g, '');
     
+    if (digitsOnly.length < 10) return null;
+
     // Take last 10 digits
     const last10Digits = digitsOnly.slice(-10);
     
@@ -69,10 +71,15 @@ function idFormatter(trackingIds) {
 };
 
 async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentType, receiverName, itemCount, items, senderName){
+    const formattedPhoneNumber = formatPhoneNumber(phoneNo);
+    
+    if (!formattedPhoneNumber){
+        return;
+    }
+
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
     myHeaders.append("authkey", process.env.WHATSAPP_TOKEN);
-    
     var raw = JSON.stringify({
         "integrated_number": `91${process.env.WHATSAPP_NUMBER}`,
         "content_type": "template",
@@ -89,7 +96,7 @@ async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentT
                 "to_and_components": [
                     {
                         "to": [
-                            `91${formatPhoneNumber(phoneNo)}`
+                            `91${formattedPhoneNumber}`
                         ],
                         "components": {
                             "body_item_count": {
@@ -140,12 +147,11 @@ async function sendOrderBookedMessage(phoneNo, trackingId, destination, paymentT
     });
 
     var requestOptions = {
-    method: 'POST',
-    headers: myHeaders,
-    body: raw,
-    redirect: 'follow'
+        method: 'POST',
+        headers: myHeaders,
+        body: raw,
+        redirect: 'follow'
     };
-
     whatsappQueue.enqueue(
         () => fetch(`${process.env.WHATSAPP_URL}`, requestOptions)
             .then(response => response.text())
@@ -159,11 +165,17 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
     const mapUrl = deliveryOffices[destination].mapUrl;
     const formattedTrackingIds = idFormatter(trackingIds);
     const destinationName = `${deliveryOffices[destination].name} (${deliveryOffices[destination].phone})`;
-    console.log(` ${phoneNo} ${formattedTrackingIds}
-        src: ${src}, vehicleNo: ${vehicleNo}
-        mapUrl: ${mapUrl}, destinationName: ${destinationName}
-        `);
+    // console.log(` ${phoneNo} ${formattedTrackingIds}
+    //     src: ${src}, vehicleNo: ${vehicleNo}
+    //     mapUrl: ${mapUrl}, destinationName: ${destinationName}
+    //     `);
     
+    const formattedPhoneNumber = formatPhoneNumber(phoneNo);
+    
+    if (!formattedPhoneNumber){
+        return;
+    }
+
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
     myHeaders.append("authkey", process.env.WHATSAPP_TOKEN);
@@ -184,7 +196,7 @@ async function sendOrderDispatchedMessage(phoneNo, trackingIds, src, destination
                 "to_and_components": [
                     {
                         "to": [
-                            `91${formatPhoneNumber(phoneNo)}`
+                            `91${formattedPhoneNumber}`
                         ],
                         "components": {
                             "body_map_url": {
