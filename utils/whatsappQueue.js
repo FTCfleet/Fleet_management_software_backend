@@ -101,7 +101,7 @@ class WhatsAppQueue {
      * Execute a task with retry + exponential backoff.
      */
     async _executeWithRetry({ taskFn, label }) {
-        return ;
+        // return ;
         for (let attempt = 0; attempt <= this.retries; attempt++) {
             try {
                 await taskFn();
