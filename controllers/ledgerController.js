@@ -10,7 +10,7 @@ const Driver = require("../models/driverSchema.js");
 const Parcel= require("../models/parcelSchema.js");
 const {sendOrderDispatchedMessage}= require("../utils/whatsappMessageSender.js");
 const puppeteer = require('puppeteer-core');
-const chromium = require('@sparticuz/chromium');
+const { getPuppeteerLaunchOptions } = require("../utils/puppeteerHelper.js");
 const fs = require('fs');
 const path = require('path');
 const { toDbValue, fromDbValueNum } = require("../utils/currencyUtils.js");
@@ -101,11 +101,22 @@ async function removeOlderSequenceMemo(ledgerId) {
 module.exports.createLedger = async (req, res) => {
     try {
         const data= req.body; //ids(parcel), truck, srcWH, destWH, lorryFreight, verifiedBySource, status
-        const parcels = [];
         const groupedParcels = new Map();
+
+        // Bulk-fetch all parcels in one query instead of N sequential findOne calls
+        const allParcels = await Parcel.find({ trackingId: { $in: data.ids } })
+            .populate('receiver sourceWarehouse destinationWarehouse items')
+            .lean();
+
+        // Build a trackingId → parcel map for ordered access
+        const parcelsByTrackingId = new Map(allParcels.map(p => [p.trackingId, p]));
+
+        const parcels = [];
         for (const id of data.ids) {
-            let parcel = await Parcel.findOne({ trackingId: id }).populate('receiver sourceWarehouse destinationWarehouse items');
-            if (parcel) parcels.push(parcel._id);
+            const parcel = parcelsByTrackingId.get(id);
+            if (!parcel) continue;
+            parcels.push(parcel._id);
+
             const receiverPhone = parcel.receiver?.phoneNo;
             const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
             const destinationWarehouseId =
@@ -294,9 +305,13 @@ module.exports.createLedgerByLL = async (req, res) => {
         // console.log('Creating new ledger:', newLedger);
         await newLedger.save();
 
+        // Bulk-fetch all parcels in one query instead of N sequential findOne calls
+        const allParcels = await Parcel.find({ _id: { $in: ll.validParcels } })
+            .populate('receiver sourceWarehouse destinationWarehouse items')
+            .lean();
+
         const groupedParcels = new Map();
-        for (const parcelId of ll.validParcels) {
-            let parcel = await Parcel.findOne({ _id: parcelId }).populate('receiver sourceWarehouse destinationWarehouse items');
+        for (const parcel of allParcels) {
             const receiverPhone = parcel.receiver?.phoneNo;
             const sourceWarehouseId = parcel.sourceWarehouse?.warehouseID;
             const destinationWarehouseId =
@@ -390,22 +405,23 @@ module.exports.createLedgerByLL = async (req, res) => {
 module.exports.generatePDF = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Optimised query: .lean() skips Mongoose hydration, .select() fetches only needed fields
         const ledger = await Ledger.findOne({ ledgerId: id })
             .populate({
                 path: 'parcels',
+                select: 'trackingId payment freight hamali doorDeliveryCharge items receiver',
                 populate: [
-                    { path: 'items', populate: { path: 'itemType' } },
-                    { path: 'sender' },
-                    { path: 'receiver' },
-                    { path: 'sourceWarehouse' },
-                    { path: 'destinationWarehouse' }
+                    { path: 'items', select: 'name quantity' },
+                    { path: 'receiver', select: 'name' },
                 ]
             })
             .populate({
-                path: 'scannedBySource scannedByDest verifiedBySource verifiedByDest',
-                select: '-password'
+                path: 'verifiedBySource',
+                select: 'name'
             })
-            .populate('sourceWarehouse destinationWarehouse');
+            .populate('sourceWarehouse destinationWarehouse')
+            .lean();
 
         if (!ledger) {
             return res.status(404).json({ message: `Can't find any Ledger with ID ${id}`, flag: false });
@@ -418,65 +434,7 @@ module.exports.generatePDF = async (req, res) => {
         };
 
         console.log('Launching Puppeteer...');
-        
-        // Use the same configuration as parcelController
-        let launchOptions = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        };
-
-        // PRIORITY 1: Check if running on Render or AWS Lambda
-        if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-            console.log('✓ Cloud environment detected (Render/Lambda) - using @sparticuz/chromium');
-            launchOptions = {
-                args: chromium.args,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-            };
-        }
-        // PRIORITY 2: Check if custom Chrome path is specified (for VPS)
-        else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-            console.log(`Using custom Chrome path: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-            if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
-                launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-            } else {
-                console.error(`Chrome not found at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-            }
-        }
-        // PRIORITY 3: Try common Chromium/Chrome paths on Linux VPS
-        else {
-            const commonPaths = [
-                '/usr/bin/chromium-browser',
-                '/usr/bin/chromium',
-                '/usr/bin/google-chrome',
-                '/usr/bin/google-chrome-stable',
-                '/snap/bin/chromium',
-            ];
-            
-            let foundPath = false;
-            for (const chromePath of commonPaths) {
-                if (fs.existsSync(chromePath)) {
-                    console.log(`✓ Found Chrome/Chromium at: ${chromePath} (VPS mode)`);
-                    launchOptions.executablePath = chromePath;
-                    foundPath = true;
-                    break;
-                }
-            }
-            
-            if (!foundPath) {
-                console.warn('⚠️  WARNING: No Chrome/Chromium found. Trying @sparticuz/chromium fallback...');
-                try {
-                    launchOptions = {
-                        args: chromium.args,
-                        executablePath: await chromium.executablePath(),
-                        headless: chromium.headless,
-                    };
-                } catch (e) {
-                    console.error('Failed to get chromium path:', e.message);
-                }
-            }
-        }
-
+        const launchOptions = await getPuppeteerLaunchOptions();
         const browser = await puppeteer.launch(launchOptions);
 
         const page = await browser.newPage();
@@ -847,12 +805,13 @@ module.exports.editLedger = async (req, res) => {
                 return res.status(400).json({message: 'No parameters for updating parcels is provided',flag:false});    
             }
 
+            // Bulk $pull all deleted parcels in a single update instead of N sequential calls
             if(delParcels && delParcels.length>0) {
-                for(let pId of delParcels){
-                    const temp= await Ledger.findOneAndUpdate({ledgerId: id}, {$pull: {parcels: pId}}, {new: true}); 
-                    // console.log(temp);
-                    await temp.save();
-                }
+                await Ledger.findOneAndUpdate(
+                    { ledgerId: id },
+                    { $pull: { parcels: { $in: delParcels } } },
+                    { new: true }
+                );
             }
 
             if(addParcels && addParcels.length>0){
@@ -862,28 +821,45 @@ module.exports.editLedger = async (req, res) => {
                     { new: true }
                 );
             }
+
+            // Re-fetch the ledger after parcel modifications
+            ledger = await Ledger.findOne({ ledgerId: id });
         }
         
         if(updateData.status) ledger.status=updateData.status;
         if(updateData.vehicleNo) ledger.vehicleNo=updateData.vehicleNo;
         if(updateData.lorryFreight !== undefined) ledger.lorryFreight=toDbValue(updateData.lorryFreight);
 
-        if(updateData.sourceWarehouse){
-            const warehouse= await Warehouse.findOne({warehouseID: updateData.sourceWarehouse});
-            ledger.sourceWarehouse=warehouse._id;
-        }
-        if(updateData.destinationWarehouse){
-            const warehouse= await Warehouse.findOne({warehouseID: updateData.destinationWarehouse});
-            ledger.destinationWarehouse=warehouse._id;
+        // Fetch both warehouses in parallel if both are being updated
+        if(updateData.sourceWarehouse || updateData.destinationWarehouse){
+            const [srcWh, destWh] = await Promise.all([
+                updateData.sourceWarehouse
+                    ? Warehouse.findOne({warehouseID: updateData.sourceWarehouse})
+                    : null,
+                updateData.destinationWarehouse
+                    ? Warehouse.findOne({warehouseID: updateData.destinationWarehouse})
+                    : null,
+            ]);
+            if(srcWh) ledger.sourceWarehouse = srcWh._id;
+            if(destWh) ledger.destinationWarehouse = destWh._id;
         }
 
+        // Bulk update hamali/freight with a single bulkWrite instead of N sequential saves
         if(updateData.hamali_freight && updateData.hamali_freight.length>0){
-            for(let hf of updateData.hamali_freight){
-                const parcel= await Parcel.findOne({trackingId: hf.trackingId});
-                parcel.hamali=toDbValue(hf.hamali);
-                parcel.freight=toDbValue(hf.freight);
-                await parcel.save();
-            }
+            await Parcel.bulkWrite(
+                updateData.hamali_freight.map(hf => ({
+                    updateOne: {
+                        filter: { trackingId: hf.trackingId },
+                        update: {
+                            $set: {
+                                hamali: toDbValue(hf.hamali),
+                                freight: toDbValue(hf.freight)
+                            }
+                        }
+                    }
+                })),
+                { ordered: false }
+            );
         }
 
         await ledger.save();
