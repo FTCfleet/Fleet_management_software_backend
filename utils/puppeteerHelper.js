@@ -23,12 +23,6 @@ const getPuppeteerLaunchOptions = async () => {
         '--disable-breakpad',
     ];
 
-    // Environment variables to bypass VPS host ld.so.preload issues
-    const vpsEnv = {
-        ...process.env,
-        LD_PRELOAD: '', // Clear LD_PRELOAD to bypass libgcwrap.so
-    };
-
     // PRIORITY 1: Cloud environment (Render / AWS Lambda)
     if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
         console.log('✓ Cloud environment detected (Render/Lambda) - using @sparticuz/chromium');
@@ -48,7 +42,6 @@ const getPuppeteerLaunchOptions = async () => {
             return {
                 headless: true,
                 args: vpsArgs,
-                env: vpsEnv,
                 executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
                 timeout: 60000,
                 protocolTimeout: 60000,
@@ -58,7 +51,20 @@ const getPuppeteerLaunchOptions = async () => {
         }
     }
 
-    // PRIORITY 3: Auto-detect common Linux paths
+    // PRIORITY 3: Check for chrome-wrapper.sh (VPS workaround for ld.so.preload)
+    const wrapperPath = require('path').join(__dirname, '..', 'chrome-wrapper.sh');
+    if (fs.existsSync(wrapperPath) && fs.existsSync('/usr/bin/google-chrome-stable')) {
+        console.log('✓ Using chrome-wrapper.sh to bypass VPS LD_PRELOAD issues');
+        return {
+            headless: true,
+            args: vpsArgs,
+            executablePath: wrapperPath,
+            timeout: 60000,
+            protocolTimeout: 60000,
+        };
+    }
+
+    // PRIORITY 4: Auto-detect common Linux paths
     const commonPaths = [
         '/usr/bin/chromium-browser',
         '/usr/bin/chromium',
@@ -73,7 +79,6 @@ const getPuppeteerLaunchOptions = async () => {
             return {
                 headless: true,
                 args: vpsArgs,
-                env: vpsEnv,
                 executablePath: chromePath,
                 timeout: 60000,
                 protocolTimeout: 60000,
@@ -81,7 +86,7 @@ const getPuppeteerLaunchOptions = async () => {
         }
     }
 
-    // PRIORITY 4: @sparticuz/chromium fallback
+    // PRIORITY 5: @sparticuz/chromium fallback
     try {
         console.log('Attempting to use @sparticuz/chromium as fallback...');
         const chromiumPath = await chromium.executablePath();
