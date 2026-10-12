@@ -19,7 +19,15 @@ const getPuppeteerLaunchOptions = async () => {
         '--single-process',
         '--disable-extensions',
         '--no-zygote',
+        '--disable-crash-reporter',
+        '--disable-breakpad',
     ];
+
+    // Environment variables to bypass VPS host ld.so.preload issues
+    const vpsEnv = {
+        ...process.env,
+        LD_PRELOAD: '', // Clear LD_PRELOAD to bypass libgcwrap.so
+    };
 
     // PRIORITY 1: Cloud environment (Render / AWS Lambda)
     if (process.env.RENDER || process.env.AWS_LAMBDA_FUNCTION_VERSION) {
@@ -40,6 +48,7 @@ const getPuppeteerLaunchOptions = async () => {
             return {
                 headless: true,
                 args: vpsArgs,
+                env: vpsEnv,
                 executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
                 timeout: 60000,
                 protocolTimeout: 60000,
@@ -64,6 +73,7 @@ const getPuppeteerLaunchOptions = async () => {
             return {
                 headless: true,
                 args: vpsArgs,
+                env: vpsEnv,
                 executablePath: chromePath,
                 timeout: 60000,
                 protocolTimeout: 60000,
@@ -95,6 +105,7 @@ const getPuppeteerLaunchOptions = async () => {
     return {
         headless: true,
         args: vpsArgs,
+        env: vpsEnv,
         timeout: 60000,
         protocolTimeout: 60000,
     };
